@@ -295,7 +295,7 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--t
   <script>
     // Force rechargement si nouvelle version disponible
     (function(){
-      var APP_VERSION = '202611141930';
+      var APP_VERSION = '202611142000';
       var stored = localStorage.getItem('ntg_app_version');
       if(stored && stored !== APP_VERSION){
         localStorage.setItem('ntg_app_version', APP_VERSION);
@@ -694,6 +694,7 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--t
           <span class="fchip" data-f="fonds" onclick="budFiltrer(this.dataset.f)">Financés</span>
           <span class="fchip" data-f="depasse" onclick="budFiltrer(this.dataset.f)">En dépassement</span>
           <span class="fchip" data-f="brouillon" onclick="budFiltrer(this.dataset.f)">Brouillons</span>
+          <span class="fchip" data-f="sans" onclick="budFiltrer(this.dataset.f)">Sans dossier</span>
         </div>
         <div id="bud-list"><div class="loader"><span class="sp2"></span>Chargement...</div></div>
       </div>
@@ -1980,8 +1981,15 @@ function buildDepSel(bkgId,dosId){
     allDossiers.forEach(d=>{const o=document.createElement('option');o.value='dos:'+d.id;o.textContent=d.numero_ntg+' — '+(d.clients?.nom||'---')+' ['+getTypeInfo(d.type_dossier).l+']';g2.appendChild(o);});
     sel.appendChild(g2);
   }
+  var sansDos=(typeof budSansDossier==='function')?budSansDossier():[];
+  if(sansDos.length){
+    const g3=document.createElement('optgroup');g3.label='Budgets sans dossier (dossier pas encore créé)';
+    sansDos.forEach(b=>{const o=document.createElement('option');o.value='bud:'+b.id;o.textContent=budLabelSource(b);g3.appendChild(o);});
+    sel.appendChild(g3);
+  }
   if(bkgId)sel.value='bkg:'+bkgId;
   if(dosId)sel.value='dos:'+dosId;
+  if(arguments[2])sel.value='bud:'+arguments[2];
   try{budDepSelChange();}catch(e){}
 }
 
@@ -2002,9 +2010,10 @@ async function sauverDep(){
   if(!sv){alert('Sélectionnez un dossier ou booking.');return;}
   if(!lib){alert('Le libellé est obligatoire.');return;}
   if(!mt||mt<=0){alert('Montant invalide.');return;}
-  const isBkg=sv.startsWith('bkg:');
+  const isBkg=sv.startsWith('bkg:'),isBud=sv.startsWith('bud:');
   const bkgId=isBkg?sv.replace('bkg:',''):null;
-  const dosId=!isBkg?sv.replace('dos:',''):null;
+  const dosId=(!isBkg&&!isBud)?sv.replace('dos:',''):null;
+  const budId=isBud?sv.replace('bud:',''):null;
   const btn=document.getElementById('btn-dep');btn.disabled=true;btn.textContent='Enregistrement...';
   try{
     // Ne pas envoyer les champs NULL pour respecter les contraintes DB
@@ -2014,11 +2023,12 @@ async function sauverDep(){
       created_by:currentUser.id};
     if(bkgId)payload.booking_id=bkgId;
   if(dosId)payload.dossier_id=dosId;
+  if(budId)payload.budget_id=budId;
   var budLigne=(document.getElementById('dep-bud')||{}).value||'';
   if(budLigne&&document.getElementById('dep-bud-wrap').style.display!=='none')payload.budget_ligne=budLigne;
   payload.created_by=currentUser.id;
   const{data,error}=await sb.from('depenses').insert(payload).select().single();
-    if(error)throw new Error(error.message);
+    if(error){if(budId&&/budget_id/.test(error.message))throw new Error('Exécutez d\'abord CORRECTIF_BUDGET_SANS_DOSSIER.sql dans Supabase (SQL Editor).');throw new Error(error.message);}
     const f=document.getElementById('dep-file')?.files[0];
     if(f&&data){
       const ext=f.name.split('.').pop().toLowerCase();
@@ -2026,9 +2036,10 @@ async function sauverDep(){
       const{error:ue}=await sb.storage.from('documents').upload(path,f,{upsert:true,contentType:f.type});
       if(!ue){const{data:ud}=sb.storage.from('documents').getPublicUrl(path);await sb.from('depenses').update({justificatif:ud.publicUrl}).eq('id',data.id);}
     }
-    const rn=bkgId?(allBkgs.find(x=>x.id===bkgId)?.numero||''):(allDossiers.find(x=>x.id===dosId)?.numero_ntg||'');
+    const rn=bkgId?(allBkgs.find(x=>x.id===bkgId)?.numero||''):(dosId?(allDossiers.find(x=>x.id===dosId)?.numero_ntg||''):budLabelSource((allBudgets||[]).find(x=>x.id===budId)||{}));
     notifNouvelleDep(mt,lib,rn,dosId,bkgId);
-    try{budApresDepense(bkgId,dosId,mt,payload.budget_ligne||null);}catch(e){}
+    try{budApresDepense(bkgId,dosId,mt,payload.budget_ligne||null,budId);}catch(e){}
+    try{if(budId&&_bud&&_bud.id===budId&&document.getElementById('m-bud').classList.contains('on')){_budDeps=await budDepenses(_bud);budRenderEditeur();}}catch(e){}
   if(bkgId)await notifAll(bkgId,'Dépense — '+rn,(currentProfile?.full_name||'?')+' a enregistré '+fAmt(mt)+': '+lib,'normale');
     btn.disabled=false;btn.textContent='Enregistrer';
     closeM('m-dep');beep();toast('Dépense enregistrée: '+fAmt(mt),'',3000);
@@ -2037,6 +2048,7 @@ async function sauverDep(){
     document.getElementById('dep-sec').value='';
     if(document.getElementById('page-depenses')?.classList.contains('on'))loadDepenses();
     if(dosId&&currentDosId===dosId)await ouvrirDossier(dosId);
+    if(document.getElementById('page-budgets')?.classList.contains('on'))try{loadBudgetsPage();}catch(e){}
   }catch(e){btn.disabled=false;btn.textContent='Enregistrer';alert('Erreur: '+e.message);}
 }
 
@@ -2227,6 +2239,7 @@ async function creerDossier(){
     closeM('m-nouveau-dos');
     beep();toast('Dossier '+data.numero_ntg+' créé !','',4000);
     notifNouveauDossier(data,currentProfile?.full_name||'?');
+    try{await budProposerRattachement('dos',data.id,data.client_id);}catch(e){}
     await loadDossiers();ouvrirDossier(data.id);
   }catch(e){
     btn.disabled=false;btn.textContent='Créer le dossier';
@@ -3335,8 +3348,17 @@ async function loadDepenses(){
   if(bIds.length)deps=deps.concat(await selectInChunks('depenses','*,profiles(full_name)','booking_id',bIds,'created_at'));
   if(dIds.length)deps=deps.concat(await selectInChunks('depenses','*,profiles(full_name)','dossier_id',dIds,'created_at'));
 
+  // Budgets établis avant la création du dossier : leurs dépenses
+  var budsSans=[];
+  try{if(budVoit()&&(f==='tous'||f==='en_cours')){await budLoadAll();budsSans=budSansDossier().filter(function(b){return !s||budLabelSource(b).toLowerCase().includes(s);});
+    if(budsSans.length)deps=deps.concat(await selectInChunks('depenses','*,profiles(full_name)','budget_id',budsSans.map(function(b){return b.id;}),'created_at'));}}catch(e){budsSans=[];}
+
   // Construire la liste unifiée
   var allItems=[];
+  budsSans.forEach(function(b){
+    var cl=(allClients||[]).find(function(c){return c.id===b.client_id;});
+    allItems.push({id:b.id,num:b.reference||'Sans dossier',cli:(cl&&cl.nom)||b.client_nom||'---',type:b.modele,ico:'🕓',cls:'d-imp-mar',statut:'en_cours',_t:'bud'});
+  });
   bkgsShow.forEach(function(b){
     allItems.push({id:b.id,num:b.numero||'---',cli:b.clients?b.clients.nom:'---',
       type:'export_maritime',ico:'🚢',cls:'d-exp-mar',statut:b.statut,_t:'bkg'});
@@ -3350,7 +3372,7 @@ async function loadDepenses(){
   var html='';
   allItems.forEach(function(item){
     var iDeps=deps.filter(function(d){
-      return item._t==='bkg'?d.booking_id===item.id:d.dossier_id===item.id;
+      return item._t==='bkg'?d.booking_id===item.id:(item._t==='bud'?(d.budget_id===item.id&&!d.booking_id&&!d.dossier_id):d.dossier_id===item.id);
     });
     var total=iDeps.reduce(function(a,x){return a+(parseFloat(x.montant)||0);},0);
     var badge=item.statut==='cloture'?'<span class="badge bgy">Clôturé</span>':'<span class="badge bg">En cours</span>';
@@ -3358,14 +3380,15 @@ async function loadDepenses(){
     html+='<div style="margin-bottom:12px">';
     html+='<div style="display:flex;align-items:center;gap:8px;padding:9px 12px;background:var(--bg3);border-radius:var(--r) var(--r) 0 0;flex-wrap:wrap">';
     html+='<span class="mono" style="font-weight:700;color:var(--nv)">'+escH(item.num)+'</span>';
-    html+='<span class="dtype '+item.cls+'">'+item.ico+' '+getTypeInfo(item.type).l+'</span>';
+    html+='<span class="dtype '+item.cls+'">'+item.ico+' '+(item._t==='bud'?'Budget sans dossier · '+(item.type==='export_maritime'?'Export':'Import')+' maritime':getTypeInfo(item.type).l)+'</span>';
     html+='<span style="font-size:12px;color:var(--t2)">'+escH(item.cli)+'</span>';
     html+=badge;
     html+='<span style="margin-left:auto;font-weight:700;color:var(--w)">'+fAmt(total)+'</span>';
     html+='<button class="btn sm gbtn" '
       +'data-bkg="'+(item._t==='bkg'?item.id:'')+'" '
       +'data-dos="'+(item._t==='dos'?item.id:'')+'" '
-      +'onclick="ouvrirAjoutDep(this.dataset.bkg,this.dataset.dos)">＋ Dépense</button>';
+      +'data-bud="'+(item._t==='bud'?item.id:'')+'" '
+      +'onclick="ouvrirAjoutDep(this.dataset.bkg,this.dataset.dos,this.dataset.bud)">＋ Dépense</button>';
     html+='</div>';
 
     if(iDeps.length){
@@ -3388,15 +3411,17 @@ async function loadDepenses(){
       html+='<div style="font-size:12px;color:var(--t3);padding:7px 12px;border:1px solid var(--bo);border-top:none;border-radius:0 0 var(--r) var(--r);cursor:pointer" '
         +'data-bkg="'+(item._t==='bkg'?item.id:'')+'" '
         +'data-dos="'+(item._t==='dos'?item.id:'')+'" '
-        +'onclick="ouvrirAjoutDep(this.dataset.bkg,this.dataset.dos)">Cliquez ＋ pour ajouter une dépense</div>';
+        +'data-bud="'+(item._t==='bud'?item.id:'')+'" '
+        +'onclick="ouvrirAjoutDep(this.dataset.bkg,this.dataset.dos,this.dataset.bud)">Cliquez ＋ pour ajouter une dépense</div>';
     }
     html+='</div>';
   });
   cont.innerHTML=html;
 }
 
-function ouvrirAjoutDep(bkgId,dosId){
-  buildDepSel(bkgId||null,dosId||null);
+async function ouvrirAjoutDep(bkgId,dosId,budId){
+  try{if(typeof budLoadAll==='function'&&budVoit())await budLoadAll();}catch(e){}
+  buildDepSel(bkgId||null,dosId||null,budId||null);
   openM('m-dep');
 }
 
@@ -3529,7 +3554,7 @@ async function creerBooking(){
     btn.disabled=false;btn.textContent='Créer le booking';
     closeM('m-bkg');beep();
     if(isEdit){toast('✅ Booking '+num+' modifié !','✅',4000);}
-    else{toast('✅ Booking '+num+' créé !','✅',5000);notifNouveauBooking(data,currentProfile?.full_name||'?');}
+    else{toast('✅ Booking '+num+' créé !','✅',5000);notifNouveauBooking(data,currentProfile?.full_name||'?');try{await budProposerRattachement('bkg',data.id,data.client_id);}catch(e){}}
     _bkgModifId=null;
     await loadBkgs();majDash();openPanel(data.id);
   }catch(e){
@@ -8340,9 +8365,14 @@ function budLignesBareme(modele){
 // ---- Réalisé (dépenses) ----
 async function budDepenses(b){
   if(!b)return [];
-  var q=b.dossier_id?sb.from('depenses').select('id,montant,raison,budget_ligne,created_at').eq('dossier_id',b.dossier_id):sb.from('depenses').select('id,montant,raison,budget_ligne,created_at').eq('booking_id',b.booking_id);
+  var sel='id,montant,raison,budget_ligne,created_at';
+  var q=b.dossier_id?sb.from('depenses').select(sel).eq('dossier_id',b.dossier_id):(b.booking_id?sb.from('depenses').select(sel).eq('booking_id',b.booking_id):(b.id?sb.from('depenses').select(sel).eq('budget_id',b.id):null));
+  if(!q)return [];
   var r=await q;return r.data||[];
 }
+// Budgets établis avant la création du dossier (ni dossier ni booking)
+function budEstSansDossier(b){return !!b&&!b.dossier_id&&!b.booking_id;}
+function budSansDossier(){return (allBudgets||[]).filter(budEstSansDossier);}
 function budSuivi(b,deps){
   var parLigne={},hors=0,tot=0;
   (deps||[]).forEach(function(d){var m=factNum(d.montant);tot+=m;var ok=d.budget_ligne&&(b.lignes||[]).some(function(l){return l.id===d.budget_ligne;});if(ok)parLigne[d.budget_ligne]=(parLigne[d.budget_ligne]||0)+m;else hors+=m;});
@@ -8367,6 +8397,15 @@ async function budRenderBloc(type,id,data){
   if(!b){
     h+='<div class="ib mb8">Aucun budget prévisionnel pour ce dossier.</div>';
     if(budPeutEditer())h+='<button class="btn sm gbtn" data-t="'+type+'" data-id="'+id+'" onclick="budOuvrir(this.dataset.t,this.dataset.id)">📋 Établir le budget prévisionnel</button>';
+    var sd=budSansDossier();
+    if(sd.length&&budPeutEditer()){
+      var src=type==='bkg'?(allBkgs||[]).find(function(x){return x.id===id;}):(allDossiers||[]).find(function(x){return x.id===id;});
+      var cid=src&&src.client_id;
+      sd=sd.slice().sort(function(a,b){return (b.client_id===cid)-(a.client_id===cid);});
+      var memes=sd.filter(function(b){return b.client_id===cid;}).length;
+      h+='<div style="margin-top:10px;font-size:12px;color:var(--t2)">'+(memes?'🕓 <strong>'+memes+' budget(s) établi(s) avant la création du dossier pour ce client.</strong> Rattacher :':'🕓 Ou rattacher un budget établi avant la création du dossier :')+'</div>';
+      sd.slice(0,6).forEach(function(b){h+='<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--bo);font-size:12px'+(b.client_id===cid?';font-weight:600':'')+'"><span>'+escH(budLabelSource(b))+' · '+factFmt(b.total)+'</span><button class="btn sm" data-b="'+b.id+'" data-t="'+type+'" data-id="'+id+'" onclick="budRattacher(this.dataset.b,this.dataset.t,this.dataset.id)">🔗 Rattacher</button></div>';});
+    }
     el.innerHTML=h;return;
   }
   var deps=await budDepenses(b),s=budSuivi(b,deps);
@@ -8394,6 +8433,19 @@ function budStatutBadge(b){
 async function budOuvrir(type,id){
   await budLoadBareme();await budLoadAll();
   if(_budSqlManquant){alert('Exécutez d\'abord CORRECTIF_BUDGET_PROFORMA.sql dans Supabase (SQL Editor).');return;}
+  if(type==='sans'){
+    var bs=id?allBudgets.find(function(x){return x.id===id;}):null;
+    if(bs&&!budEstSansDossier(bs)){budOuvrir(bs.booking_id?'bkg':'dos',bs.booking_id||bs.dossier_id);return;}
+    if(!bs){
+      if(!budPeutEditer()){alert('Le budget prévisionnel est établi par le DG ou le Responsable des opérations.');return;}
+      bs={id:null,dossier_id:null,booking_id:null,modele:'import_maritime',client_id:null,client_nom:'',reference:'',
+        params:{nb20:0,nb40:1,dest:'Cotonou',transport_pu:0},lignes:budLignesBareme('import_maritime'),statut:'brouillon',note:''};
+      budRecalc(bs);
+    }
+    _bud=JSON.parse(JSON.stringify(bs));_bud._type='sans';_bud._src=bs.id;
+    _budDeps=_bud.id?await budDepenses(_bud):[];
+    budRenderEditeur();openM('m-bud');return;
+  }
   var b=budPourSource(type,id);
   if(!b){
     if(!budPeutEditer()){alert('Le budget prévisionnel est établi par le DG ou le Responsable des opérations.');return;}
@@ -8409,6 +8461,7 @@ async function budOuvrir(type,id){
   budRenderEditeur();openM('m-bud');
 }
 function budLabelSource(b){
+  if(budEstSansDossier(b)&&(b.id||b.modele)){var cl=(allClients||[]).find(function(c){return c.id===b.client_id;});return 'Sans dossier'+(b.reference?' · '+b.reference:'')+' · '+(b.modele==='export_maritime'?'Export maritime':'Import maritime')+' · '+((cl&&cl.nom)||b.client_nom||'client ?');}
   if(b.booking_id){var k=(allBkgs||[]).find(function(x){return x.id===b.booking_id;});return k?'Booking '+(k.numero||'')+' · Export maritime · '+((k.clients&&k.clients.nom)||''):'Booking';}
   var d=(allDossiers||[]).find(function(x){return x.id===b.dossier_id;});
   return d?(d.numero_ntg||'')+' · '+getTypeInfo(d.type_dossier).l+' · '+((d.clients&&d.clients.nom)||''):'Dossier';
@@ -8420,6 +8473,14 @@ function budRenderEditeur(){
   document.getElementById('bud-title').textContent='Budget prévisionnel — '+budLabelSource(b);
   var dis=ro?'disabled ':'';
   var h='<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px">'+budStatutBadge(b)+(b.statut==='fonds_disponibles'?'<span style="font-size:11px;color:var(--t3)">Budget financé : modification bloquée (le DG peut le rouvrir).</span>':'')+'</div>';
+  if(budEstSansDossier(b)){
+    h+='<div class="card mb8" style="padding:10px 12px;border-left:3px solid var(--w)"><div style="font-size:12px;color:var(--t2);margin-bottom:8px">🕓 <strong>Budget établi avant la création du dossier.</strong> Les fonds peuvent être demandés et des dépenses saisies dès maintenant ; rattachez-le au dossier dès qu\'il est créé.</div>'
+      +'<div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end">'
+      +'<div><div class="fl">Client *</div><select class="fs" style="height:30px;padding:2px 8px;min-width:200px" '+dis+'onchange="budSetInfo(\'client_id\',this.value)"><option value="">— Choisir —</option>'+(allClients||[]).map(function(c){return '<option value="'+c.id+'"'+(c.id===b.client_id?' selected':'')+'>'+escH(c.nom)+'</option>';}).join('')+'</select></div>'
+      +'<div><div class="fl">Type d\'opération</div><select class="fs" style="height:30px;padding:2px 8px;width:auto" '+dis+'onchange="budSetInfo(\'modele\',this.value)"><option value="import_maritime"'+(b.modele==='import_maritime'?' selected':'')+'>Import maritime</option><option value="export_maritime"'+(b.modele==='export_maritime'?' selected':'')+'>Export maritime</option></select></div>'
+      +'<div style="flex:1;min-width:180px"><div class="fl">Référence attendue (BL, booking, commande…)</div><input class="fi" style="height:30px" '+dis+'value="'+escH(b.reference||'')+'" placeholder="Ex. BL MEDUY0132173" onchange="budSetInfo(\'reference\',this.value)"></div>'
+      +'</div></div>';
+  }
   h+='<div class="card mb8" style="padding:10px 12px;display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end">';
   h+='<div><div class="fl">Conteneurs 20\'</div><input type="number" min="0" class="fi" style="height:30px;width:90px" '+dis+'value="'+factNum(p.nb20)+'" onchange="budSetParam(\'nb20\',this.value)"></div>';
   h+='<div><div class="fl">Conteneurs 40\'</div><input type="number" min="0" class="fi" style="height:30px;width:90px" '+dis+'value="'+factNum(p.nb40)+'" onchange="budSetParam(\'nb40\',this.value)"></div>';
@@ -8450,11 +8511,24 @@ function budRenderEditeur(){
   // actions
   var a='<button class="btn" onclick="closeM(\'m-bud\')">Fermer</button>';
   if(b.id)a+='<button class="btn" onclick="budImprimer(_bud.id)">🖨️ Imprimer</button>';
+  if(b.id&&budEstSansDossier(b)){
+    a+='<button class="btn" data-id="'+b.id+'" onclick="ouvrirAjoutDep(null,null,this.dataset.id)">💰 ＋ Dépense</button>';
+    if(budPeutEditer())a+='<button class="btn" onclick="budChoisirSource(\'rattacher\')">🔗 Rattacher à un dossier</button>';
+  }
   if(!ro)a+='<button class="btn" onclick="budEnregistrer()">💾 Enregistrer</button>';
   if(budPeutEditer()&&b.statut==='brouillon')a+='<button class="btn obtn" onclick="budEnregistrer(\'transmis\')">📨 Transmettre à la comptabilité</button>';
   if(budPeutFinancer()&&b.statut==='transmis')a+='<button class="btn gbtn" onclick="budEnregistrer(\'fonds_disponibles\')">💰 Fonds mis à disposition</button>';
   if(factEstDG()&&b.statut==='fonds_disponibles')a+='<button class="btn" onclick="budEnregistrer(\'brouillon\')">↩ Rouvrir</button>';
   document.getElementById('bud-actions').innerHTML=a;
+}
+function budSetInfo(k,v){
+  if(k==='modele'){
+    if(v===_bud.modele)return;
+    if(!confirm('Changer le type d\'opération remplace les charges par celles du barème « '+(v==='export_maritime'?'Export':'Import')+' maritime ». Continuer ?')){budRenderEditeur();return;}
+    _bud.modele=v;_bud.params=_bud.params||{};_bud.params.dest=v==='export_maritime'?'Bohicon':'Cotonou';_bud.lignes=budLignesBareme(v);budRecalc(_bud);
+  }else _bud[k]=v;
+  if(k==='client_id'){var c=(allClients||[]).find(function(x){return x.id===v;});_bud.client_nom=c?c.nom:'';}
+  budRenderEditeur();
 }
 function budSetParam(k,v){_bud.params=_bud.params||{};_bud.params[k]=(k==='dest')?v:factNum(v);budRecalc(_bud);budRenderEditeur();}
 function budSetLigne(i,k,v){
@@ -8479,6 +8553,10 @@ async function budReinit(){
 async function budEnregistrer(statut){
   var b=_bud;budRecalc(b);
   var p={dossier_id:b.dossier_id,booking_id:b.booking_id,modele:b.modele,params:b.params,lignes:b.lignes.map(function(l){var c=Object.assign({},l);return c;}),total:b.total,note:b.note||null};
+  if(budEstSansDossier(b)){
+    if(!b.client_id){alert('Choisissez le client du budget.');return;}
+    p.client_id=b.client_id;p.client_nom=b.client_nom||null;p.reference=(b.reference||'').trim()||null;
+  }
   var who=(currentProfile&&currentProfile.full_name)||'';
   if(statut){p.statut=statut;
     if(statut==='transmis'){p.transmis_le=new Date().toISOString();p.transmis_par=who;}
@@ -8488,8 +8566,8 @@ async function budEnregistrer(statut){
   var r;
   if(b.id)r=await sb.from('budgets').update(p).eq('id',b.id).select().single();
   else{p.created_by=currentUser.id;p.statut=p.statut||'brouillon';r=await sb.from('budgets').insert(p).select().single();}
-  if(r.error){alert('Erreur : '+r.error.message);return;}
-  _bud=Object.assign(r.data,{_type:b._type,_src:b._src});
+  if(r.error){alert(/client_id|reference|client_nom/.test(r.error.message)?'Exécutez d\'abord CORRECTIF_BUDGET_SANS_DOSSIER.sql dans Supabase (SQL Editor).':'Erreur : '+r.error.message);return;}
+  _bud=Object.assign(r.data,{_type:b._type,_src:b._type==='sans'?r.data.id:b._src});
   await budLoadAll();
   var lbl=budLabelSource(_bud);
   if(statut==='transmis')ntgNotif({title:'📨 Budget transmis à la comptabilité',msg:escH(lbl)+'<br>Montant à prévoir : <strong>'+factFmt(_bud.total)+' FCFA</strong>',ico:'📋',type:'info',duration:9000});
@@ -8498,7 +8576,7 @@ async function budEnregistrer(statut){
   budRenderEditeur();budApresMaj();
 }
 function budApresMaj(){
-  if(_bud&&_bud._type)budRenderBloc(_bud._type,_bud._src);
+  if(_bud&&(_bud._type==='dos'||_bud._type==='bkg'))budRenderBloc(_bud._type,_bud._src);
   var pg=document.getElementById('page-budgets');if(pg&&pg.classList.contains('on'))loadBudgetsPage();
   var dash=document.getElementById('page-dash');if(dash&&dash.classList.contains('on'))try{majDash();}catch(e){}
 }
@@ -8517,7 +8595,7 @@ async function budImprimer(id){
     +'.tot td{background:#1058a0;color:#fff;font-weight:700;border:none}.visa{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:28px}.visa div{border:1px solid #cbd5e1;border-radius:6px;height:80px;padding:6px;font-size:10px;font-weight:700;color:#1058a0;text-transform:uppercase}'
     +'.info{display:flex;gap:18px;flex-wrap:wrap;background:#f4f7fb;border-radius:6px;padding:8px 10px;margin-top:4px}.np{margin-top:14px}@media print{.np{display:none}}</style></head><body>'
     +ntgReportHeader('Budget prévisionnel',escH(budLabelSource(b)),'Édité le '+now+'<br>'+(b.statut==='fonds_disponibles'?'Fonds mis à disposition':(b.statut==='transmis'?'Transmis à la comptabilité':'Brouillon')))
-    +'<div class="info"><span>Conteneurs 20\' : <strong>'+factNum(p.nb20)+'</strong></span><span>Conteneurs 40\' : <strong>'+factNum(p.nb40)+'</strong></span><span>Transport : <strong>'+escH(p.dest||'')+'</strong></span>'+(b.note?'<span>Note : '+escH(b.note)+'</span>':'')+'</div>'
+    +'<div class="info">'+(budEstSansDossier(b)?'<span>Dossier : <strong>pas encore créé</strong></span>':'')+'<span>Conteneurs 20\' : <strong>'+factNum(p.nb20)+'</strong></span><span>Conteneurs 40\' : <strong>'+factNum(p.nb40)+'</strong></span><span>Transport : <strong>'+escH(p.dest||'')+'</strong></span>'+(b.note?'<span>Note : '+escH(b.note)+'</span>':'')+'</div>'
     +'<table><thead><tr><th>Désignation</th><th>Unité</th><th class="amt">Qté</th><th class="amt">P.U.</th><th class="amt">Budget</th>'+(real?'<th class="amt">Dépensé</th><th class="amt">Écart</th>':'')+'</tr></thead><tbody>'+rows
     +'<tr class="tot"><td colspan="4">TOTAL À PRÉVOIR</td><td class="amt">'+factFmt(s.total)+'</td>'+(real?'<td class="amt">'+factFmt(s.depense)+'</td><td class="amt">'+factFmt(s.reste)+'</td>':'')+'</tr></tbody></table>'
     +'<div style="margin-top:8px;font-size:11px">Arrêté le présent budget à la somme de : <strong>'+factEnLettres(s.total)+' francs CFA</strong>. Les frais « à renseigner » (phytosanitaire, achat BL…) seront ajoutés dès qu\'ils sont connus.</div>'
@@ -8535,8 +8613,8 @@ async function budDepSelChange(){
   if(!v)return;
   try{await budLoadAll();}catch(e){return;}
   if(_budSqlManquant)return;
-  var type=v.indexOf('bkg:')===0?'bkg':'dos',id=v.slice(4);
-  var b=budPourSource(type,id);if(!b)return;
+  var type=v.indexOf('bkg:')===0?'bkg':(v.indexOf('bud:')===0?'bud':'dos'),id=v.slice(4);
+  var b=type==='bud'?allBudgets.find(function(x){return x.id===id;}):budPourSource(type,id);if(!b)return;
   var deps=await budDepenses(b),s=budSuivi(b,deps);
   sel.innerHTML='<option value="">— Hors budget —</option>'+(b.lignes||[]).map(function(l){var sp=s.parLigne[l.id]||0;return '<option value="'+escH(l.id)+'" data-lib="'+escH(l.lib)+'" data-reste="'+(l.mt-sp)+'">'+escH(l.lib)+' — reste '+factFmt(l.mt-sp)+' / '+factFmt(l.mt)+'</option>';}).join('');
   wrap.style.display='';
@@ -8550,10 +8628,10 @@ function budDepLigneChoisie(){
   var o=sel.options[sel.selectedIndex];var lib=document.getElementById('dep-lib');
   if(o&&o.value&&lib&&!lib.value.trim())lib.value=o.getAttribute('data-lib')||'';
 }
-async function budApresDepense(bkgId,dosId,mt,ligneId){
+async function budApresDepense(bkgId,dosId,mt,ligneId,budId){
   try{
     await budLoadAll();if(_budSqlManquant)return;
-    var b=budPourSource(bkgId?'bkg':'dos',bkgId||dosId);if(!b)return;
+    var b=budId?allBudgets.find(function(x){return x.id===budId;}):budPourSource(bkgId?'bkg':'dos',bkgId||dosId);if(!b)return;
     var deps=await budDepenses(b),s=budSuivi(b,deps);
     var lbl=budLabelSource(b);
     var l=ligneId?(b.lignes||[]).find(function(x){return x.id===ligneId;}):null;
@@ -8566,9 +8644,10 @@ async function budApresDepense(bkgId,dosId,mt,ligneId){
 // Situation de tous les budgets (tableau de bord, page Budgets, alertes)
 async function budSituationGlobale(){
   var ok=await budLoadAll();if(!ok||!allBudgets.length)return [];
-  var deps=[];try{var dr=await fetchAllRows(function(){return sb.from('depenses').select('montant,dossier_id,booking_id,budget_ligne');});deps=dr.data||[];}catch(e){}
+  var deps=[];try{var dr=await fetchAllRows(function(){return sb.from('depenses').select('montant,dossier_id,booking_id,budget_ligne,budget_id');});
+    if(dr.error)dr=await fetchAllRows(function(){return sb.from('depenses').select('montant,dossier_id,booking_id,budget_ligne');});deps=dr.data||[];}catch(e){}
   return allBudgets.map(function(b){
-    var mine=deps.filter(function(d){return b.dossier_id?d.dossier_id===b.dossier_id:d.booking_id===b.booking_id;});
+    var mine=deps.filter(function(d){return b.dossier_id?d.dossier_id===b.dossier_id:(b.booking_id?d.booking_id===b.booking_id:(d.budget_id===b.id&&!d.dossier_id&&!d.booking_id));});
     return {b:b,s:budSuivi(b,mine)};
   });
 }
@@ -8611,20 +8690,21 @@ function renderBudgets(){
     if(_budFiltre==='transmis')return x.b.statut==='transmis';
     if(_budFiltre==='fonds')return x.b.statut==='fonds_disponibles';
     if(_budFiltre==='brouillon')return x.b.statut==='brouillon';
+    if(_budFiltre==='sans')return budEstSansDossier(x.b);
     if(_budFiltre==='depasse')return x.s.depasseTotal||x.s.lignesDepassees.length;
     return true;});
   if(!rows.length){el.innerHTML='<div class="empty">Aucun budget pour ce filtre.'+(budPeutEditer()?'<br><br><button class="btn gbtn" onclick="budChoisirSource()">＋ Nouveau budget</button><div style="font-size:11px;margin-top:8px">Vous pouvez aussi l\'établir depuis la fiche d\'un dossier ou d\'un booking (bloc « Budget prévisionnel », au-dessus de la facturation).</div>':'<br>Les budgets sont établis par le DG ou le Responsable des opérations.')+'</div>';return;}
   var h='<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12px"><thead><tr style="text-align:left;color:var(--t3);font-size:10px;text-transform:uppercase"><th style="padding:6px">Dossier</th><th>Statut</th><th style="text-align:right">Budget</th><th style="text-align:right">Dépensé</th><th style="text-align:right">Reste</th><th style="width:120px">Consommation</th></tr></thead><tbody>';
   rows.forEach(function(x){
     var b=x.b,s=x.s,c=s.depasseTotal?'var(--d)':(s.alerte90?'var(--w)':'var(--a)');
-    h+='<tr style="border-top:1px solid var(--bo);cursor:pointer" data-t="'+(b.booking_id?'bkg':'dos')+'" data-id="'+(b.booking_id||b.dossier_id)+'" onclick="budOuvrir(this.dataset.t,this.dataset.id)"><td style="padding:7px 6px">'+escH(budLabelSource(b))+(s.lignesDepassees.length?' <span style="color:var(--d);font-size:11px">⚠️ '+s.lignesDepassees.length+' ligne(s)</span>':'')+'</td><td>'+budStatutBadge(b)+'</td>'
+    h+='<tr style="border-top:1px solid var(--bo);cursor:pointer" data-t="'+(b.booking_id?'bkg':(b.dossier_id?'dos':'sans'))+'" data-id="'+(b.booking_id||b.dossier_id||b.id)+'" onclick="budOuvrir(this.dataset.t,this.dataset.id)"><td style="padding:7px 6px">'+escH(budLabelSource(b))+(s.lignesDepassees.length?' <span style="color:var(--d);font-size:11px">⚠️ '+s.lignesDepassees.length+' ligne(s)</span>':'')+'</td><td>'+budStatutBadge(b)+'</td>'
       +'<td style="text-align:right;font-weight:700">'+factFmt(s.total)+'</td><td style="text-align:right;color:var(--w)">'+factFmt(s.depense)+'</td><td style="text-align:right;font-weight:700;color:'+(s.reste<0?'var(--d)':'var(--a)')+'">'+factFmt(s.reste)+'</td>'
       +'<td><div style="height:7px;background:var(--bg3);border-radius:4px;overflow:hidden"><div style="height:100%;width:'+Math.min(100,s.pct)+'%;background:'+c+'"></div></div><div style="font-size:10px;color:var(--t3)">'+s.pct+' %</div></td></tr>';
   });
   el.innerHTML=h+'</tbody></table></div>';
 }
 // ---- Nouveau budget depuis la page Budgets : choix du dossier / booking ----
-var _budChoix=[];
+var _budChoix=[],_budChoixMode='nouveau';
 async function budCompleterSources(budgets){
   // les listes globales peuvent être filtrées (page Dossiers) : on complète ce qui manque
   var dIds=(budgets||[]).map(function(b){return b.dossier_id;}).filter(function(id){return id&&!(allDossiers||[]).some(function(x){return x.id===id;});});
@@ -8632,8 +8712,13 @@ async function budCompleterSources(budgets){
   if(dIds.length){var d=await selectInChunks('dossiers','*,clients(nom)','id',dIds);allDossiers=(allDossiers||[]).concat(d);}
   if(bIds.length){var k=await selectInChunks('bookings','*,clients(nom)','id',bIds);allBkgs=(allBkgs||[]).concat(k);}
 }
-async function budChoisirSource(){
+async function budChoisirSource(mode){
   if(!budPeutEditer()){alert('Le budget prévisionnel est établi par le DG ou le Responsable des opérations.');return;}
+  _budChoixMode=mode==='rattacher'?'rattacher':'nouveau';
+  var rat=_budChoixMode==='rattacher';
+  document.getElementById('bud-choix-title').textContent=rat?'🔗 Rattacher le budget à un dossier':'＋ Nouveau budget prévisionnel';
+  document.getElementById('bud-choix-sans').style.display=rat?'none':'';
+  document.getElementById('bud-choix-aide').textContent=rat?'Choisissez le dossier ou le booking créé pour ce budget. Ses dépenses déjà saisies le suivront.':'Ou choisissez le dossier / booking concerné. Les charges sont pré-remplies avec le barème (Paramètres) et restent modifiables.';
   var q=document.getElementById('bud-choix-q');if(q)q.value='';
   var el=document.getElementById('bud-choix-list');el.innerHTML='<div class="loader"><span class="sp2"></span>Chargement...</div>';
   openM('m-bud-choix');
@@ -8651,8 +8736,53 @@ async function budChoisirSource(){
     .concat(dos.map(function(d){return {t:'dos',id:d.id,num:d.numero_ntg||'',type:getTypeInfo(d.type_dossier).l||d.type_dossier||'',r:d.type_dossier==='import_maritime'?1:2,client:(d.clients&&d.clients.nom)||'',date:d.created_at||''};}))
     .filter(function(x){return !budPourSource(x.t,x.id);})
     .sort(function(a,b){return a.r-b.r||String(b.date).localeCompare(String(a.date));});
+  if(rat&&_bud){ // le client du budget d'abord, et le type correspondant
+    var cid=_bud.client_id,want=_bud.modele==='export_maritime'?'bkg':'dos';
+    var cliOf=function(x){var o=x.t==='bkg'?(allBkgs||[]).find(function(k){return k.id===x.id;}):(allDossiers||[]).find(function(d){return d.id===x.id;});return o&&o.client_id;};
+    _budChoix.forEach(function(x){x.r=(cliOf(x)===cid?0:10)+(x.t===want?0:1);});
+    _budChoix.sort(function(a,b){return a.r-b.r||String(b.date).localeCompare(String(a.date));});
+  }
   budChoixRender();
   setTimeout(function(){var i=document.getElementById('bud-choix-q');if(i)i.focus();},50);
+}
+function budChoixClic(t,id){
+  closeM('m-bud-choix');
+  if(_budChoixMode==='rattacher'&&_bud&&_bud.id)budRattacher(_bud.id,t,id);
+  else budOuvrir(t,id);
+}
+// Rattache un budget « sans dossier » à un dossier / booking ; ses dépenses suivent
+async function budRattacher(budId,t,id,silencieux){
+  await budLoadAll();
+  var b=allBudgets.find(function(x){return x.id===budId;});if(!b||!budEstSansDossier(b))return false;
+  if(budPourSource(t,id)){alert('Ce dossier a déjà un budget prévisionnel.');return false;}
+  var cible=t==='bkg'?(allBkgs||[]).find(function(x){return x.id===id;}):(allDossiers||[]).find(function(x){return x.id===id;});
+  var nomCible=t==='bkg'?'le booking '+((cible&&cible.numero)||''):'le dossier '+((cible&&cible.numero_ntg)||'');
+  if(!silencieux&&!confirm('Rattacher le budget « '+budLabelSource(b)+' » à '+nomCible+' ?\nLes dépenses déjà saisies sur ce budget seront rattachées au même dossier.'))return false;
+  var who=(currentProfile&&currentProfile.full_name)||'';
+  var maj={rattache_le:new Date().toISOString(),rattache_par:who};
+  if(t==='bkg')maj.booking_id=id;else maj.dossier_id=id;
+  var r=await sb.from('budgets').update(maj).eq('id',budId).select().single();
+  if(r.error){alert(/rattache/.test(r.error.message)?'Exécutez d\'abord CORRECTIF_BUDGET_SANS_DOSSIER.sql dans Supabase (SQL Editor).':'Erreur : '+r.error.message);return false;}
+  var dm=t==='bkg'?{booking_id:id}:{dossier_id:id};
+  var rd=await sb.from('depenses').update(dm).eq('budget_id',budId).is('dossier_id',null).is('booking_id',null);
+  if(rd.error)alert('Budget rattaché, mais les dépenses n\'ont pas pu suivre : '+rd.error.message);
+  await budLoadAll();
+  ntgNotif({title:'🔗 Budget rattaché',msg:escH(budLabelSource(r.data)),ico:'🔗',type:'success',duration:6000});
+  if(_bud&&_bud.id===budId){_bud=Object.assign(r.data,{_type:t,_src:id});_budDeps=await budDepenses(_bud);if(document.getElementById('m-bud').classList.contains('on'))budRenderEditeur();}
+  budRenderBloc(t,id);
+  var pg=document.getElementById('page-budgets');if(pg&&pg.classList.contains('on'))loadBudgetsPage();
+  return true;
+}
+// À la création d'un dossier / booking : proposer le budget sans dossier du même client
+async function budProposerRattachement(t,id,clientId){
+  if(!clientId||!budPeutEditer())return;
+  await budLoadAll();if(_budSqlManquant)return;
+  var c=budSansDossier().filter(function(b){return b.client_id===clientId&&(t==='bkg'?b.modele==='export_maritime':b.modele!=='export_maritime');});
+  if(!c.length)c=budSansDossier().filter(function(b){return b.client_id===clientId;});
+  if(!c.length)return;
+  if(c.length===1){
+    if(confirm('Un budget prévisionnel a déjà été établi pour ce client avant la création du dossier :\n\n'+budLabelSource(c[0])+' — '+factFmt(c[0].total)+' FCFA\n\nLe rattacher à ce nouveau '+(t==='bkg'?'booking':'dossier')+' ?'))await budRattacher(c[0].id,t,id,true);
+  }else ntgNotif({title:'🕓 '+c.length+' budgets sans dossier pour ce client',msg:'Rattachez le bon depuis le bloc « Budget prévisionnel » du dossier.',ico:'📋',type:'info',duration:10000});
 }
 function budChoixRender(){
   var el=document.getElementById('bud-choix-list');if(!el)return;
@@ -8660,9 +8790,9 @@ function budChoixRender(){
   var rows=_budChoix.filter(function(x){return !q||_normTxt(x.num+' '+x.type+' '+x.client).toLowerCase().indexOf(q)>=0;});
   if(!rows.length){el.innerHTML='<div class="empty">'+(_budChoix.length?'Aucun résultat.':'Tous les dossiers en cours ont déjà un budget.')+'</div>';return;}
   el.innerHTML=rows.slice(0,200).map(function(x){
-    return '<div class="todo-it" style="cursor:pointer;display:flex;justify-content:space-between;gap:8px;padding:8px 10px;border-bottom:1px solid var(--bo)" data-t="'+x.t+'" data-id="'+x.id+'" onclick="closeM(\'m-bud-choix\');budOuvrir(this.dataset.t,this.dataset.id)">'
+    return '<div class="todo-it" style="cursor:pointer;display:flex;justify-content:space-between;gap:8px;padding:8px 10px;border-bottom:1px solid var(--bo)" data-t="'+x.t+'" data-id="'+x.id+'" onclick="budChoixClic(this.dataset.t,this.dataset.id)">'
       +'<div><strong>'+escH(x.num)+'</strong> <span style="font-size:11px;color:var(--t3)">· '+escH(x.type)+'</span><div style="font-size:12px;color:var(--t2)">'+escH(x.client||'—')+'</div></div>'
-      +'<span style="font-size:12px;color:var(--a);align-self:center;white-space:nowrap">Établir ›</span></div>';
+      +'<span style="font-size:12px;color:var(--a);align-self:center;white-space:nowrap">'+(_budChoixMode==='rattacher'?'🔗 Rattacher':'Établir ›')+'</span></div>';
   }).join('')+(rows.length>200?'<div style="font-size:11px;color:var(--t3);padding:6px">… affinez la recherche ('+rows.length+' résultats)</div>':'');
 }
 function budFiltrer(f){_budFiltre=f;document.querySelectorAll('#page-budgets .fchip').forEach(function(c){c.classList.toggle('on',c.dataset.f===f);});renderBudgets();}
@@ -8740,7 +8870,11 @@ async function pfNouvelle(src){
   if(src.budget){
     var b=src.budget;modele=b.modele==='libre'?'import_maritime':b.modele;lignesBud=b.lignes;
     var c=await factContexte({dossier_id:b.dossier_id,booking_id:b.booking_id});
-    entete=c.entete;client_id=c.client_id;entete.nb_ctn=String(factNum((b.params||{}).nb20)+factNum((b.params||{}).nb40));
+    entete=c.entete;client_id=c.client_id;
+    if(budEstSansDossier(b)){client_id=b.client_id||null;var cl0=(allClients||[]).find(function(x){return x.id===b.client_id;})||{};
+      entete.client_nom=cl0.nom||b.client_nom||'';entete.client_ifu=cl0.ifu||'';entete.client_adresse=cl0.adresse||'COTONOU - BENIN';
+      entete.regime=modele==='export_maritime'?'EXPORT':'IMPORT';if(b.reference)entete.bl=b.reference;}
+    entete.nb_ctn=String(factNum((b.params||{}).nb20)+factNum((b.params||{}).nb40));
   }else{
     var tmp={params:{nb20:0,nb40:1,dest:modele==='export_maritime'?'Bohicon':'Cotonou'},lignes:budLignesBareme(modele)};budRecalc(tmp);lignesBud=tmp.lignes;
     entete={client_nom:'',client_adresse:'COTONOU - BENIN',regime:modele==='export_maritime'?'EXPORT':'IMPORT',nb_ctn:'1'};
@@ -8928,9 +9062,10 @@ function pfFiltrer(f){_pfFiltre=f;document.querySelectorAll('#page-proforma .fch
 
 <div class="mo" id="m-bud-choix">
   <div class="modal" style="max-width:640px;width:100%">
-    <div class="mh"><div class="mt">＋ Nouveau budget prévisionnel</div><button class="mc" onclick="closeM('m-bud-choix')">✕</button></div>
+    <div class="mh"><div class="mt" id="bud-choix-title">＋ Nouveau budget prévisionnel</div><button class="mc" onclick="closeM('m-bud-choix')">✕</button></div>
     <div class="mbody">
-      <div style="font-size:12px;color:var(--t3);margin-bottom:8px">Choisissez le dossier ou le booking concerné. Les charges sont pré-remplies avec le barème (Paramètres) et restent modifiables.</div>
+      <div id="bud-choix-sans" class="card mb8" style="padding:10px 12px;border-left:3px solid var(--w);display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap"><div style="font-size:12px"><strong>Le dossier n'existe pas encore ?</strong><div style="color:var(--t3)">Établissez le budget maintenant (client, type, référence attendue) et rattachez-le au dossier plus tard.</div></div><button class="btn obtn sm" onclick="closeM('m-bud-choix');budOuvrir('sans',null)">🕓 Budget sans dossier</button></div>
+      <div style="font-size:12px;color:var(--t3);margin-bottom:8px" id="bud-choix-aide">Ou choisissez le dossier / booking concerné. Les charges sont pré-remplies avec le barème (Paramètres) et restent modifiables.</div>
       <input type="text" class="fi" id="bud-choix-q" placeholder="Rechercher : n° NTG, booking, client…" oninput="budChoixRender()">
       <div id="bud-choix-list" style="margin-top:8px;max-height:55vh;overflow-y:auto"></div>
     </div>
