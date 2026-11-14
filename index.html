@@ -295,7 +295,7 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--t
   <script>
     // Force rechargement si nouvelle version disponible
     (function(){
-      var APP_VERSION = '202611131700';
+      var APP_VERSION = '202611141930';
       var stored = localStorage.getItem('ntg_app_version');
       if(stored && stored !== APP_VERSION){
         localStorage.setItem('ntg_app_version', APP_VERSION);
@@ -685,7 +685,7 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--t
 
   <div class="page" id="page-budgets">
     <div style="max-width:1200px;margin:0 auto">
-      <div class="ph"><h1 class="ptitle">📋 Budgets prévisionnels</h1></div>
+      <div class="ph" style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap"><h1 class="ptitle">📋 Budgets prévisionnels</h1><button class="btn gbtn" id="bud-btn-new" style="display:none" onclick="budChoisirSource()">＋ Nouveau budget</button></div>
       <div class="kpi-grid" id="bud-kpis"></div>
       <div class="card">
         <div class="frow">
@@ -7025,6 +7025,8 @@ function factLignesModele(modele,ctx){
 }
 
 // ---- Contexte d'un dossier / booking (en-tête pré-rempli depuis la déclaration) ----
+// Dossier terrestre (import/export terrestre, transit) : en-tête avec n° camion, jamais de conteneur
+function factEnteteTerrestre(f){var e=(f&&f.entete)||{};return !!(e.terrestre||(f&&f.modele==='export_terrestre')||e.bl_label==='LETTRE DE VOITURE');}
 function factDeclData(d){var j=d&&d.decl_data;if(typeof j==='string'){try{j=JSON.parse(j);}catch(e){j=null;}}return j||{};}
 async function factContexte(src){
   // src: {dossier_id} ou {booking_id}
@@ -7047,8 +7049,10 @@ async function factContexte(src){
     e.bl=d.identifiant_principal||j.identifiant||'';
     e.destinataire=j.destinataire||'';
     e.frontiere=(BUREAUX.find(function(b){return b.k===d.bureau_douane;})||{}).l||d.bureau_douane||'';
-    e.nb_ctn=d.matricule_camion?'1':'';
-    e.conteneurs=d.matricule_camion||'';
+    var camion=d.matricule_camion||d.tra_num_camion||'';
+    e.terrestre=(ti.mode==='terrestre'||typeDos==='transit');
+    e.nb_ctn=camion?String(camion.split(/\s*[-,;\/]\s*/).filter(Boolean).length||1):'';
+    e.conteneurs=camion;
     ctx={N:1,valeur:(j.devise&&j.devise!=='XOF')?0:j.valeur,taxes:j.taxes_total||0,tg:j.taxes_globales||0,tv:(j.taxes_total&&j.taxes_globales)?j.taxes_total-j.taxes_globales:0,mode:ti.mode||'',produit:d.produit||'',pnT:(j.poids_net||0)/1000,pbT:(j.poids_brut||0)/1000};
     e._source='Dossier '+(d.numero_ntg||'');
     e._dossier=d.numero_ntg||'';
@@ -7147,10 +7151,10 @@ async function factPdfBytes(f,opts){
     [(isAvoir?'AVOIR N° :':(isPF?'PRO-FORMA N° :':'FACTURE N° :')),f.numero||(opts.brouillon?'(attribué à la signature)':'')],
     ['OT :',e.ot],['BOOKING :',e.booking],['DATE :',f.date_facture?new Date(f.date_facture+'T12:00:00').toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long',year:'numeric'}):''],
     ['REGIME DOUANIER :',e.regime],['DECLARATION :',e.declaration],['OBJET :',e.objet],['DESIGNATION :',e.designation&&e.designation!==e.objet?e.designation:''],
-    ['VALEUR STATISTIQUE :',e.valeur],['NBRE DE COLIS :',e.colis],['NBRE DE CTNEURS/CAMIONS :',e.nb_ctn],
+    ['VALEUR STATISTIQUE :',e.valeur],['NBRE DE COLIS :',e.colis],[factEnteteTerrestre(f)?'NBRE DE CAMIONS :':'NBRE DE CTNEURS/CAMIONS :',e.nb_ctn],
     [f.modele==='export_tonne'?'POIDS NET (T) :':'POIDS NET (KG) :',f.modele==='export_tonne'?e.poids_net_t:e.poids_net],
     [f.modele==='export_tonne'?'POIDS BRUT (T) :':'POIDS BRUT (KG) :',f.modele==='export_tonne'?e.poids_brut_t:e.poids_brut],
-    [(e.bl_label||'BL')+' :',e.bl],['DESTINATAIRE :',e.destinataire],['FRONTIERE :',e.frontiere],['NUMERO CONTENEUR :',e.conteneurs]
+    [(e.bl_label||'BL')+' :',e.bl],['DESTINATAIRE :',e.destinataire],['FRONTIERE :',e.frontiere],[factEnteteTerrestre(f)?'NUMERO CAMION :':'NUMERO CONTENEUR :',e.conteneurs]
   ];
   if(isAvoir&&e.facture_origine)rows.splice(1,0,['ANNULE LA FACTURE :',e.facture_origine]);
   rows=rows.filter(function(r){return r[1]!==undefined&&r[1]!==null&&String(r[1]).trim()!=='';});
@@ -7321,10 +7325,10 @@ function factRenderEditeur(){
   }
   h+='</div>';
   // En-tête
-  var champs=[['client_nom','Client'],['client_ifu','IFU client'],['client_adresse','Adresse client'],['ot','OT'],['booking','Booking'],['regime','Régime douanier'],['declaration','Déclaration'],['objet','Objet'],['designation','Désignation'],['valeur','Valeur statistique'],['colis','Nbre de colis'],['nb_ctn','Nbre conteneurs / camions']];
+  var champs=[['client_nom','Client'],['client_ifu','IFU client'],['client_adresse','Adresse client'],['ot','OT'],['booking','Booking'],['regime','Régime douanier'],['declaration','Déclaration'],['objet','Objet'],['designation','Désignation'],['valeur','Valeur statistique'],['colis','Nbre de colis'],['nb_ctn',factEnteteTerrestre(f)?'Nbre de camions':'Nbre conteneurs / camions']];
   if(f.modele==='export_tonne')champs=champs.concat([['poids_net_t','Poids net (T)'],['poids_brut_t','Poids brut (T)'],['prix_tonne','Prix / tonne (FCFA)']]);
   else champs=champs.concat([['poids_net','Poids net (kg)'],['poids_brut','Poids brut (kg)']]);
-  champs=champs.concat([['bl_label','Libellé du titre (BL, LTA…)'],['bl','N° BL / LTA / LV'],['destinataire','Destinataire'],['frontiere','Frontière / bureau'],['conteneurs','N° conteneurs / camions']]);
+  champs=champs.concat([['bl_label','Libellé du titre (BL, LTA…)'],['bl','N° BL / LTA / LV'],['destinataire','Destinataire'],['frontiere','Frontière / bureau'],['conteneurs',factEnteteTerrestre(f)?'N° camion(s)':'N° conteneurs / camions']]);
   h+='<div class="card mb8" style="padding:10px 12px"><div class="stitle">En-tête de la facture</div><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:8px">';
   champs.forEach(function(c){h+='<div><div class="fl">'+c[1]+'</div>'+factInp('entete.'+c[0],e[c[0]],{mono:c[0]==='declaration'||c[0]==='bl'})+'</div>';});
   h+='</div></div>';
@@ -8495,7 +8499,7 @@ async function budEnregistrer(statut){
 }
 function budApresMaj(){
   if(_bud&&_bud._type)budRenderBloc(_bud._type,_bud._src);
-  var pg=document.getElementById('page-budgets');if(pg&&pg.classList.contains('on'))renderBudgets();
+  var pg=document.getElementById('page-budgets');if(pg&&pg.classList.contains('on'))loadBudgetsPage();
   var dash=document.getElementById('page-dash');if(dash&&dash.classList.contains('on'))try{majDash();}catch(e){}
 }
 
@@ -8584,8 +8588,10 @@ async function loadBudgetsPage(){
   var el=document.getElementById('bud-list');if(!el)return;
   if(!budVoit()){el.innerHTML='<div class="empty">Accès réservé au DG, au Responsable des opérations, à la DAF et au comptable.</div>';return;}
   el.innerHTML='<div class="loader"><span class="sp2"></span>Chargement...</div>';
+  var bn=document.getElementById('bud-btn-new');if(bn)bn.style.display=budPeutEditer()?'':'none';
   await budLoadBareme();
   window._budGlobal=await budSituationGlobale();
+  await budCompleterSources(allBudgets);
   if(_budSqlManquant){el.innerHTML='<div class="ib" style="background:var(--dbg);color:var(--d)">⚠️ Exécutez d\'abord <strong>CORRECTIF_BUDGET_PROFORMA.sql</strong> dans Supabase (SQL Editor), puis rechargez.</div>';return;}
   renderBudgets();
 }
@@ -8607,7 +8613,7 @@ function renderBudgets(){
     if(_budFiltre==='brouillon')return x.b.statut==='brouillon';
     if(_budFiltre==='depasse')return x.s.depasseTotal||x.s.lignesDepassees.length;
     return true;});
-  if(!rows.length){el.innerHTML='<div class="empty">Aucun budget pour ce filtre. Les budgets s\'établissent depuis chaque dossier ou booking (bloc « Budget prévisionnel »).</div>';return;}
+  if(!rows.length){el.innerHTML='<div class="empty">Aucun budget pour ce filtre.'+(budPeutEditer()?'<br><br><button class="btn gbtn" onclick="budChoisirSource()">＋ Nouveau budget</button><div style="font-size:11px;margin-top:8px">Vous pouvez aussi l\'établir depuis la fiche d\'un dossier ou d\'un booking (bloc « Budget prévisionnel », au-dessus de la facturation).</div>':'<br>Les budgets sont établis par le DG ou le Responsable des opérations.')+'</div>';return;}
   var h='<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12px"><thead><tr style="text-align:left;color:var(--t3);font-size:10px;text-transform:uppercase"><th style="padding:6px">Dossier</th><th>Statut</th><th style="text-align:right">Budget</th><th style="text-align:right">Dépensé</th><th style="text-align:right">Reste</th><th style="width:120px">Consommation</th></tr></thead><tbody>';
   rows.forEach(function(x){
     var b=x.b,s=x.s,c=s.depasseTotal?'var(--d)':(s.alerte90?'var(--w)':'var(--a)');
@@ -8616,6 +8622,48 @@ function renderBudgets(){
       +'<td><div style="height:7px;background:var(--bg3);border-radius:4px;overflow:hidden"><div style="height:100%;width:'+Math.min(100,s.pct)+'%;background:'+c+'"></div></div><div style="font-size:10px;color:var(--t3)">'+s.pct+' %</div></td></tr>';
   });
   el.innerHTML=h+'</tbody></table></div>';
+}
+// ---- Nouveau budget depuis la page Budgets : choix du dossier / booking ----
+var _budChoix=[];
+async function budCompleterSources(budgets){
+  // les listes globales peuvent être filtrées (page Dossiers) : on complète ce qui manque
+  var dIds=(budgets||[]).map(function(b){return b.dossier_id;}).filter(function(id){return id&&!(allDossiers||[]).some(function(x){return x.id===id;});});
+  var bIds=(budgets||[]).map(function(b){return b.booking_id;}).filter(function(id){return id&&!(allBkgs||[]).some(function(x){return x.id===id;});});
+  if(dIds.length){var d=await selectInChunks('dossiers','*,clients(nom)','id',dIds);allDossiers=(allDossiers||[]).concat(d);}
+  if(bIds.length){var k=await selectInChunks('bookings','*,clients(nom)','id',bIds);allBkgs=(allBkgs||[]).concat(k);}
+}
+async function budChoisirSource(){
+  if(!budPeutEditer()){alert('Le budget prévisionnel est établi par le DG ou le Responsable des opérations.');return;}
+  var q=document.getElementById('bud-choix-q');if(q)q.value='';
+  var el=document.getElementById('bud-choix-list');el.innerHTML='<div class="loader"><span class="sp2"></span>Chargement...</div>';
+  openM('m-bud-choix');
+  await budLoadAll();
+  if(_budSqlManquant){el.innerHTML='<div class="ib" style="background:var(--dbg);color:var(--d)">Exécutez d\'abord CORRECTIF_BUDGET_PROFORMA.sql dans Supabase (SQL Editor).</div>';return;}
+  var rd=await fetchAllRows(function(){return sb.from('dossiers').select('*,clients(nom)');});
+  var rb=await fetchAllRows(function(){return sb.from('bookings').select('*,clients(nom)');});
+  if(rd.error||rb.error){el.innerHTML='<div class="empty">Erreur : '+escH(((rd.error||rb.error).message)||'')+'</div>';return;}
+  var ouvert=function(x){return x.statut!=='cloture';};
+  var dos=(rd.data||[]).filter(ouvert),bkg=(rb.data||[]).filter(ouvert);
+  dos.forEach(function(d){if(!(allDossiers||[]).some(function(x){return x.id===d.id;}))allDossiers.push(d);});
+  bkg.forEach(function(b){if(!(allBkgs||[]).some(function(x){return x.id===b.id;}))allBkgs.push(b);});
+  var rang={export_maritime:0,import_maritime:1};
+  _budChoix=bkg.map(function(b){return {t:'bkg',id:b.id,num:'Booking '+(b.numero||''),type:'Export maritime',r:0,client:(b.clients&&b.clients.nom)||'',date:b.created_at||''};})
+    .concat(dos.map(function(d){return {t:'dos',id:d.id,num:d.numero_ntg||'',type:getTypeInfo(d.type_dossier).l||d.type_dossier||'',r:d.type_dossier==='import_maritime'?1:2,client:(d.clients&&d.clients.nom)||'',date:d.created_at||''};}))
+    .filter(function(x){return !budPourSource(x.t,x.id);})
+    .sort(function(a,b){return a.r-b.r||String(b.date).localeCompare(String(a.date));});
+  budChoixRender();
+  setTimeout(function(){var i=document.getElementById('bud-choix-q');if(i)i.focus();},50);
+}
+function budChoixRender(){
+  var el=document.getElementById('bud-choix-list');if(!el)return;
+  var q=_normTxt((document.getElementById('bud-choix-q')||{}).value||'').toLowerCase().trim();
+  var rows=_budChoix.filter(function(x){return !q||_normTxt(x.num+' '+x.type+' '+x.client).toLowerCase().indexOf(q)>=0;});
+  if(!rows.length){el.innerHTML='<div class="empty">'+(_budChoix.length?'Aucun résultat.':'Tous les dossiers en cours ont déjà un budget.')+'</div>';return;}
+  el.innerHTML=rows.slice(0,200).map(function(x){
+    return '<div class="todo-it" style="cursor:pointer;display:flex;justify-content:space-between;gap:8px;padding:8px 10px;border-bottom:1px solid var(--bo)" data-t="'+x.t+'" data-id="'+x.id+'" onclick="closeM(\'m-bud-choix\');budOuvrir(this.dataset.t,this.dataset.id)">'
+      +'<div><strong>'+escH(x.num)+'</strong> <span style="font-size:11px;color:var(--t3)">· '+escH(x.type)+'</span><div style="font-size:12px;color:var(--t2)">'+escH(x.client||'—')+'</div></div>'
+      +'<span style="font-size:12px;color:var(--a);align-self:center;white-space:nowrap">Établir ›</span></div>';
+  }).join('')+(rows.length>200?'<div style="font-size:11px;color:var(--t3);padding:6px">… affinez la recherche ('+rows.length+' résultats)</div>':'');
 }
 function budFiltrer(f){_budFiltre=f;document.querySelectorAll('#page-budgets .fchip').forEach(function(c){c.classList.toggle('on',c.dataset.f===f);});renderBudgets();}
 
@@ -8878,6 +8926,16 @@ function pfFiltrer(f){_pfFiltre=f;document.querySelectorAll('#page-proforma .fch
   </div>
 </div>
 
+<div class="mo" id="m-bud-choix">
+  <div class="modal" style="max-width:640px;width:100%">
+    <div class="mh"><div class="mt">＋ Nouveau budget prévisionnel</div><button class="mc" onclick="closeM('m-bud-choix')">✕</button></div>
+    <div class="mbody">
+      <div style="font-size:12px;color:var(--t3);margin-bottom:8px">Choisissez le dossier ou le booking concerné. Les charges sont pré-remplies avec le barème (Paramètres) et restent modifiables.</div>
+      <input type="text" class="fi" id="bud-choix-q" placeholder="Rechercher : n° NTG, booking, client…" oninput="budChoixRender()">
+      <div id="bud-choix-list" style="margin-top:8px;max-height:55vh;overflow-y:auto"></div>
+    </div>
+  </div>
+</div>
 <div class="mo" id="m-bud">
   <div class="modal" style="max-width:1000px;width:100%">
     <div class="mh"><div class="mt" id="bud-title">Budget prévisionnel</div><button class="mc" onclick="closeM('m-bud')">✕</button></div>
