@@ -320,7 +320,7 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--t
   <script>
     // Force rechargement si nouvelle version disponible
     (function(){
-      var APP_VERSION = '202611152230';
+      var APP_VERSION = '202611152330';
       var stored = localStorage.getItem('ntg_app_version');
       if(stored && stored !== APP_VERSION){
         localStorage.setItem('ntg_app_version', APP_VERSION);
@@ -378,11 +378,8 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--t
           <option value="agent">Agent</option>
           <option value="superviseur">Superviseur</option>
           <option value="declarant">Déclarant</option>
-          <option value="daf">DAF (Directeur Admin. et Financier)</option>
-          <option value="resp_ops">Responsable des Opérations</option>
-          <option value="dg">Directeur Général</option>
         </select>
-        <div style="font-size:11px;color:var(--t3);margin-top:3px">⚠️ Le DG peut modifier votre rôle après connexion.</div>
+        <div style="font-size:11px;color:var(--t3);margin-top:3px">⚠️ Les rôles DG, DAF, Responsable des opérations et Comptable sont attribués par le DG après l'inscription.</div>
       </div>
       <button class="bsub" id="r-btn" onclick="doRegister()">Créer mon compte</button>
       <div id="r-msg" class="msgbox"></div>
@@ -494,7 +491,7 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--t
     <div style="max-width:1100px;margin:0 auto">
       <div class="ph">
         <h1 class="ptitle"><span class="pt-ic"><svg class="ic" aria-hidden="true"><use href="#i-folder"/></svg></span>Tous les dossiers</h1>
-        <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn obtn" onclick="ouvrirImportDecl()">📥 Importer des déclarations</button><button class="btn gbtn" onclick="openNouveauDossier('')">＋ Nouveau dossier</button></div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn obtn" id="btn-import-decl" onclick="ouvrirImportDecl()">📥 Importer des déclarations</button><button class="btn gbtn" onclick="openNouveauDossier('')">＋ Nouveau dossier</button></div>
       </div>
       <div class="card">
         <div class="frow">
@@ -670,7 +667,7 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--t
   <div class="page" id="page-fact">
     <div style="max-width:1200px;margin:0 auto">
       <div class="ph"><h1 class="ptitle"><span class="pt-ic"><svg class="ic" aria-hidden="true"><use href="#i-receipt"/></svg></span>Facturation</h1>
-        <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" onclick="factReleveClient()">📄 Relevé client</button><button class="btn gbtn" onclick="factNouvelle()">＋ Nouvelle facture</button></div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" onclick="factReleveClient()">📄 Relevé client</button><button class="btn gbtn" id="btn-fact-new" onclick="factNouvelle()">＋ Nouvelle facture</button></div>
       </div>
       <div class="kpi-grid" id="fact-kpis"></div>
       <div class="card">
@@ -695,7 +692,7 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--t
   
 <div class="page" id="page-proforma">
     <div style="max-width:1200px;margin:0 auto">
-      <div class="ph"><h1 class="ptitle"><span class="pt-ic"><svg class="ic" aria-hidden="true"><use href="#i-filepen"/></svg></span>Pro-forma / cotations</h1><button class="btn gbtn" onclick="pfNouvelle()">＋ Nouvelle pro-forma</button></div>
+      <div class="ph"><h1 class="ptitle"><span class="pt-ic"><svg class="ic" aria-hidden="true"><use href="#i-filepen"/></svg></span>Pro-forma / cotations</h1><button class="btn gbtn" id="pf-btn-new" onclick="pfNouvelle()">＋ Nouvelle pro-forma</button></div>
       <div class="card">
         <div class="frow">
           <span class="fchip on" data-f="tous" onclick="pfFiltrer(this.dataset.f)">Toutes</span>
@@ -1291,9 +1288,42 @@ function renderBureauBadge(){
 }
 
 // Navigation selon profil
+// =====================================================================
+// DROITS PAR RÔLE (une seule matrice ; le serveur applique les mêmes règles
+// via CORRECTIF_DROITS.sql)
+//  - comptes utilisateurs : DG seul (rôles, bureaux, suppression)
+//  - importer des déclarations : tous sauf DAF et comptable
+//  - préparer des factures : DG, Resp. opérations, comptable (le DG seul signe/émet)
+//  - encaissements, dépôt, relances : DG, DAF, comptable
+//  - budgets et pro-forma : DG et Resp. opérations (DAF/comptable : consultation
+//    + « fonds mis à disposition »)
+//  - dépenses : tout le monde
+// =====================================================================
+var NTG_DROITS={
+  comptes:['dg'],
+  facturer:['dg','resp_ops','comptable'],
+  encaisser:['dg','daf','comptable'],
+  finances:['dg','daf','resp_ops','comptable'],
+  budget:['dg','resp_ops'],
+  financer:['dg','daf','comptable'],
+  proformaVoir:['dg','resp_ops','daf','comptable']
+};
+function ntgRole(){return (currentProfile&&currentProfile.role)||'';}
+function ntgPeut(d){
+  var r=ntgRole();if(!r)return false;
+  if(d==='importDecl')return ['daf','comptable'].indexOf(r)<0;
+  if(d==='depense')return true;
+  return (NTG_DROITS[d]||[]).indexOf(r)>=0;
+}
+function ntgAfficher(id,ok){var e=document.getElementById(id);if(e)e.style.display=ok?'':'none';}
 function renderNav(){
-  // Marquer l'item actif — les items sont dans le HTML
-  // Paramètres et Dashboard toujours visibles pour le DG
+  // Menu et boutons selon le rôle (les pages vérifient aussi les droits)
+  ntgAfficher('nav-fact',ntgPeut('finances'));
+  ntgAfficher('nav-budgets',ntgPeut('finances'));
+  ntgAfficher('nav-proforma',ntgPeut('proformaVoir'));
+  ntgAfficher('btn-import-decl',ntgPeut('importDecl'));
+  ntgAfficher('btn-fact-new',ntgPeut('facturer'));
+  ntgAfficher('pf-btn-new',ntgPeut('budget'));
 }
 // =============================================
 // GESTION DES DOSSIERS (hors export maritime)
@@ -2160,7 +2190,7 @@ async function openNouveauDossier(type,opts){
   _dosModifId=null;                       // TOUJOURS repartir en mode création
   resetFormNouveauDossier();              // et d'un formulaire vide
   pSel('ndos-client',allClients,'id','nom');
-  pSel('ndos-resp',allProfiles,'id','full_name');
+  pSel('ndos-resp',profilsActifs(),'id','full_name');
   const ts=document.getElementById('ndos-type');if(ts)ts.disabled=false;
   appliquerTypeDossier(type||nouveauDosType||'import_maritime');
   const btn=document.getElementById('btn-creer-dos');
@@ -2338,11 +2368,11 @@ async function loadTeam(){
     const roleLabel=getRoleLabel(m.role||'agent');
     const bureauLabel=getBureauLabel(m.bureau_principal||'');
     const autresBureaux=(m.bureaux_autorises||[]).map(k=>getBureauLabel(k)).join(', ');
-    return '<div class="user-row" id="team-row-'+m.id+'">'
+    return '<div class="user-row" id="team-row-'+m.id+'"'+(m.actif===false?' style="opacity:.55"':'')+'>'
       +'<div class="uav2">'+ini(m.full_name||'?')+'</div>'
       +'<div style="flex:1;min-width:0">'
         +'<div style="font-size:13px;font-weight:600">'+escH(m.full_name||'---')+'</div>'
-        +'<div style="font-size:11px;color:var(--t3)">'+roleLabel+' · '+(bureauLabel||'Aucun bureau principal')+'</div>'
+        +'<div style="font-size:11px;color:var(--t3)">'+(m.actif===false?'<span class="badge br" style="margin-right:4px">Compte supprimé</span>':'')+roleLabel+' · '+(bureauLabel||'Aucun bureau principal')+'</div>'
         +(autresBureaux?'<div style="font-size:11px;color:var(--b)">+ '+autresBureaux+'</div>':'')
       +'</div>'
       +'<button class="btn sm" onclick="editMember(\''+m.id+'\')">✏️ Gérer</button>'
@@ -2363,7 +2393,34 @@ async function editMember(userId){
   document.querySelectorAll('#em-bureaux input[type=checkbox]').forEach(cb=>{
     cb.checked=autorises.includes(cb.value);
   });
+  const bs=document.getElementById('em-btn-suppr');
+  if(bs){
+    const desactive=m.actif===false;
+    bs.style.display=(ntgPeut('comptes')&&m.id!==currentUser.id)?'':'none';
+    bs.innerHTML=desactive?'↩️ Réactiver le compte':'🗑️ Supprimer le compte';
+    bs.className=desactive?'btn gbtn':'btn rbtn';
+    bs.dataset.reactiver=desactive?'1':'';
+  }
   openM('m-edit-membre');
+}
+
+// Suppression d'un compte (DG seul) : l'accès est coupé immédiatement,
+// l'historique (étapes validées, dépenses, factures…) reste attribué à la personne.
+async function supprimerCompte(){
+  if(!ntgPeut('comptes')){alert('Seul le DG peut supprimer un compte.');return;}
+  const userId=document.getElementById('em-id').value;
+  const nom=document.getElementById('em-name').textContent;
+  const reactiver=document.getElementById('em-btn-suppr').dataset.reactiver==='1';
+  if(userId===currentUser.id){alert('Vous ne pouvez pas supprimer votre propre compte.');return;}
+  if(reactiver){
+    if(!confirm('Réactiver le compte de '+nom+' ?'))return;
+  }else{
+    if(!confirm('Supprimer le compte de '+nom+' ?\n\nLa personne ne pourra plus se connecter. Son historique (étapes, dépenses, factures) est conservé.'))return;
+  }
+  const{error}=await sb.rpc(reactiver?'ntg_reactiver_compte':'ntg_supprimer_compte',{cible:userId});
+  if(error){alert(/ntg_(supprimer|reactiver)_compte|function/i.test(error.message)?'Exécutez d\'abord CORRECTIF_DROITS.sql dans Supabase (SQL Editor).':'Erreur : '+error.message);return;}
+  closeM('m-edit-membre');beep();toast(reactiver?'Compte réactivé':'Compte supprimé : accès coupé','',4000);
+  await loadTeam();await loadProfiles();
 }
 
 async function saveMember(){
@@ -2394,7 +2451,7 @@ function goPage(page,btn){
   if(page==='dash'){
     Promise.all([loadBkgs(),loadDossiers()]).then(()=>majDash());
   }
-  if(page==='dos'){pSel('ndos-client',allClients,'id','nom');pSel('ndos-resp',allProfiles,'id','full_name');loadDossiers();}
+  if(page==='dos'){pSel('ndos-client',allClients,'id','nom');pSel('ndos-resp',profilsActifs(),'id','full_name');loadDossiers();}
   if(page==='exp-mar'){loadBkgs().then(function(){renderBkgsPage();});}
   if(page==='post-emb'){loadBkgs().then(function(){loadPostEmbarquement();setTimeout(runPendingAction,800);});}
   if(page==='imp-mar')loadDossiersByType('import_maritime','imp-mar-list');
@@ -2581,9 +2638,10 @@ function getLbl(k){const s=getSec(k);return s.i+' '+s.l;}
 function jours(d){if(!d)return null;return Math.ceil((new Date(d)-new Date())/86400000);}
 async function loadClients(){const{data}=await sb.from('clients').select('*').order('nom');allClients=data||[];renderClients();['nb-cl','ndos-client'].forEach(id=>pSel(id,allClients,'id','nom'));}
 async function loadArmateurs(){const{data}=await sb.from('armateurs').select('*').order('nom');allArmateurs=data||[];pSel('nb-ar',allArmateurs,'id','nom');}
+function profilsActifs(){return (allProfiles||[]).filter(function(p){return p.actif!==false;});}
 async function loadProfiles(){
   const{data}=await sb.from('profiles').select('*').order('full_name');allProfiles=data||[];
-  for(let i=0;i<=14;i++)pSel('nb-r'+i,allProfiles,'id','full_name');
+  for(let i=0;i<=14;i++)pSel('nb-r'+i,profilsActifs(),'id','full_name');
   renderUsers();loadPP();
 }
 
@@ -3842,6 +3900,11 @@ async function initAppCentrale(user){
   }
   // Charger le profil
   const{data:p}=await sb.from('profiles').select('*').eq('id',user.id).single();
+  if(p&&p.actif===false){
+    alert('Ce compte a été supprimé par la Direction. Contactez le DG si c\'est une erreur.');
+    try{await sb.auth.signOut();}catch(e){}
+    currentUser=null;currentProfile=null;showScreen('as');return;
+  }
   currentProfile=p;
   if(p){
     const av=document.getElementById('u-av');
@@ -3919,10 +3982,7 @@ document.addEventListener('keydown',function(e){
 // Accès: DG, DAF, Responsable des Opérations
 // =============================================
 
-function peutFacturer(){
-  var r=currentProfile&&currentProfile.role;
-  return r==='dg'||r==='daf'||r==='resp_ops';
-}
+function peutFacturer(){return ntgPeut('facturer');}
 
 // (bloc facturation des dossiers : voir MODULE FACTURATION v2 plus bas)
 
@@ -6483,7 +6543,7 @@ var _declSqlMissing=false;
 
 // ---- Interface -------------------------------------------------------
 function ouvrirImportDecl(){
-  if(!currentProfile||['dg','resp_ops','declarant'].indexOf(currentProfile.role)<0){alert('Importer des déclarations est réservé au DG, au Responsable Opérations et aux déclarants.');return;}
+  if(!ntgPeut('importDecl')){alert('Importer des déclarations n\'est pas ouvert à la DAF ni au comptable.');return;}
   _declRows=[];_declPdfs=[];_declXmls=[];_declMsgs=[];
   var inp=document.getElementById('decl-files');if(inp)inp.value='';
   declRender();
@@ -6904,9 +6964,9 @@ var _factSqlManquant=false;
 
 function factRole(){return (currentProfile&&currentProfile.role)||'';}
 function factEstDG(){return factRole()==='dg';}
-function factPeutPreparer(){return ['dg','daf','resp_ops','comptable'].indexOf(factRole())>=0;}
-function factPeutEncaisser(){return ['dg','daf','comptable'].indexOf(factRole())>=0;}
-function factVoitFinances(){return ['dg','daf','resp_ops','comptable'].indexOf(factRole())>=0;}
+function factPeutPreparer(){return ntgPeut('facturer');}
+function factPeutEncaisser(){return ntgPeut('encaisser');}
+function factVoitFinances(){return ntgPeut('finances');}
 function factR(n){return Math.round(Number(n)||0);}
 function factNum(v){var n=parseFloat(String(v==null?'':v).replace(/\s/g,'').replace(',','.'));return isNaN(n)?0:n;}
 function factFmt(n){ // 1 234 567 avec espaces normales (compatibles PDF)
@@ -7311,7 +7371,7 @@ async function factVoirPdf(id){
 // ÉDITEUR DE FACTURE
 // =====================================================================
 async function factNouvelle(src){
-  if(!factPeutPreparer()){alert('La facturation est réservée au DG, à la DAF, au Responsable des opérations et au comptable.');return;}
+  if(!factPeutPreparer()){alert('Les factures sont préparées par le DG, le Responsable des opérations ou le comptable.');return;}
   await factLoadCfg();
   if(!allFactures.length)await factLoadAll();
   if(_factSqlManquant){alert('La base n\'est pas encore prête : exécutez CORRECTIF_FACTURATION.sql dans Supabase (SQL Editor), puis rechargez la page.');return;}
@@ -8339,8 +8399,8 @@ var BUD_UNITES={dossier:'par dossier',ctn:'par conteneur',ctn20:'par conteneur 2
 var _budBareme=null,allBudgets=[],_bud=null,_budDeps=[],_budSqlManquant=false,_budFiltre='tous';
 var allProformas=[],_pf=null,_pfFiltre='tous';
 
-function budPeutEditer(){return ['dg','resp_ops'].indexOf(factRole())>=0;}
-function budPeutFinancer(){return ['dg','daf','comptable'].indexOf(factRole())>=0;}
+function budPeutEditer(){return ntgPeut('budget');}
+function budPeutFinancer(){return ntgPeut('financer');}
 function budVoit(){return factVoitFinances();}
 function budUid(){return 'l'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);}
 
@@ -8447,7 +8507,7 @@ async function budRenderBloc(type,id,data){
   if(s.lignesDepassees.length)h+='<div class="ib mb8" style="background:var(--dbg);color:var(--d)">⚠️ Ligne(s) dépassée(s) : '+s.lignesDepassees.map(function(x){return escH(x.l.lib)+' (+'+factFmt(x.ecart)+')';}).join(', ')+'</div>';
   h+='<div style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn sm gbtn" data-t="'+type+'" data-id="'+id+'" onclick="budOuvrir(this.dataset.t,this.dataset.id)">'+(budPeutEditer()?'✏️ Ouvrir le budget':'👁️ Voir le budget')+'</button>'
     +'<button class="btn sm" data-id="'+b.id+'" onclick="budImprimer(this.dataset.id)">🖨️ Imprimer</button>'
-    +(factPeutPreparer()?'<button class="btn sm" data-id="'+b.id+'" onclick="pfDepuisBudget(this.dataset.id)">📝 Pro-forma</button>':'')+'</div>';
+    +(budPeutEditer()?'<button class="btn sm" data-id="'+b.id+'" onclick="pfDepuisBudget(this.dataset.id)">📝 Pro-forma</button>':'')+'</div>';
   el.innerHTML=h;
 }
 function budStatutBadge(b){
@@ -8888,7 +8948,7 @@ function pfLignesDepuis(modele,budgetLignes,bareme){
   return {groupes:G,tvaLib:'TVA SUR HAD'};
 }
 async function pfNouvelle(src){
-  if(!factPeutPreparer()){alert('Réservé au DG, au Responsable des opérations, à la DAF et au comptable.');return;}
+  if(!budPeutEditer()){alert('Les pro-forma sont établies par le DG ou le Responsable des opérations.');return;}
   await budLoadBareme();await factLoadCfg();
   var ok=await pfLoadAll();
   if(!ok){alert('Exécutez d\'abord CORRECTIF_BUDGET_PROFORMA.sql dans Supabase (SQL Editor).');return;}
@@ -8920,7 +8980,7 @@ async function pfOuvrir(id){
   var p=allProformas.find(function(x){return x.id===id;});if(!p)return;
   _pf=JSON.parse(JSON.stringify(p));pfRender();openM('m-pf');
 }
-function pfModifiable(){return _pf&&(_pf.statut==='brouillon'||_pf.statut==='envoyee')&&factPeutPreparer();}
+function pfModifiable(){return _pf&&(_pf.statut==='brouillon'||_pf.statut==='envoyee')&&budPeutEditer();}
 function pfRender(){
   var f=_pf,el=document.getElementById('pf-body');if(!el||!f)return;
   var ro=!pfModifiable(),e=f.entete||{},calc=factCalc(f),dis=ro?'disabled ':'';
@@ -8963,8 +9023,8 @@ function pfRender(){
   var a='<button class="btn" onclick="closeM(\'m-pf\')">Fermer</button><button class="btn" onclick="pfPdf(false)">👁️ Aperçu</button>';
   if(pfModifiable())a+='<button class="btn" onclick="pfEnregistrer()">💾 Enregistrer</button>';
   if(f.id)a+='<button class="btn obtn" onclick="pfPdf(true)">⬇️ PDF</button>';
-  if(f.id&&f.statut==='brouillon'&&factPeutPreparer())a+='<button class="btn" onclick="pfStatut(\'envoyee\')">📨 Marquer envoyée</button>';
-  if(f.id&&(f.statut==='envoyee'||f.statut==='brouillon')&&factPeutPreparer())a+='<button class="btn" style="color:var(--d)" onclick="pfStatut(\'refusee\')">✕ Refusée</button><button class="btn gbtn" onclick="pfConvertir()">✅ Acceptée → créer la facture</button>';
+  if(f.id&&f.statut==='brouillon'&&budPeutEditer())a+='<button class="btn" onclick="pfStatut(\'envoyee\')">📨 Marquer envoyée</button>';
+  if(f.id&&(f.statut==='envoyee'||f.statut==='brouillon')&&budPeutEditer())a+='<button class="btn" style="color:var(--d)" onclick="pfStatut(\'refusee\')">✕ Refusée</button><button class="btn gbtn" onclick="pfConvertir()">✅ Acceptée → créer la facture</button>';
   document.getElementById('pf-actions').innerHTML=a;
 }
 function pfBadge(f){
@@ -9273,6 +9333,7 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
             <option value="declarant">Déclarant</option>
             <option value="daf">DAF</option>
             <option value="resp_ops">Resp. Opérations</option>
+            <option value="comptable">Comptable</option>
             <option value="dg">Directeur Général</option>
           </select>
         </div>
@@ -9305,7 +9366,7 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
         </div>
       </div>
     </div>
-    <div class="mf"><button class="btn" onclick="closeM('m-edit-membre')">Annuler</button><button class="btn gbtn" onclick="saveMember()">Sauvegarder</button></div>
+    <div class="mf"><button class="btn rbtn" id="em-btn-suppr" style="margin-right:auto" onclick="supprimerCompte()">🗑️ Supprimer le compte</button><button class="btn" onclick="closeM('m-edit-membre')">Annuler</button><button class="btn gbtn" onclick="saveMember()">Sauvegarder</button></div>
   </div>
 </div>
 
