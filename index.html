@@ -295,7 +295,7 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--t
   <script>
     // Force rechargement si nouvelle version disponible
     (function(){
-      var APP_VERSION = '202611142000';
+      var APP_VERSION = '202611152100';
       var stored = localStorage.getItem('ntg_app_version');
       if(stored && stored !== APP_VERSION){
         localStorage.setItem('ntg_app_version', APP_VERSION);
@@ -6002,23 +6002,9 @@ async function initOneSignal(appId){
 }
 
 async function osPush(title,msg,url,ico){
-  if(!_osAppId)return;
-  // Récupérer la clé API depuis settings
-  try{
-    var restKey='os_v2_app_6lm76xiwtvhx7j4xlbgl5rph6betuvsw3qru5hnccpmfoz2y25mi2uweaxbtvc3afhkwxavakimtohn44oh6nwhhunqmx3u63gbwe4y';
-    await fetch('https://onesignal.com/api/v1/notifications',{
-      method:'POST',
-      headers:{'Authorization':'Basic '+restKey,'Content-Type':'application/json'},
-      body:JSON.stringify({
-        app_id:_osAppId,
-        included_segments:['All'],
-        headings:{fr:title,en:title},
-        contents:{fr:msg,en:msg},
-        url:url||window.location.href,
-        small_icon:ico||'🚢',
-      })
-    });
-  }catch(e){console.warn('osPush:',e);}
+  // Envoi push « serveur » désactivé : aucune clé secrète ne doit figurer dans ce fichier
+  // (le dépôt est public). À réactiver via une fonction serveur (Supabase Edge Function).
+  return;
 }
 
 // Wrapper ntgNotif enrichi avec OneSignal
