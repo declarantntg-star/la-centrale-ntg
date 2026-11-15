@@ -112,7 +112,29 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--t
 .nb{display:flex;align-items:center;gap:8px;padding:9px 14px;border:none;background:transparent;color:var(--t2);font-size:13px;font-weight:500;cursor:pointer;width:100%;text-align:left;transition:.12s;border-left:3px solid transparent}
 .nb:hover{background:var(--bg3);color:var(--t)}
 .nb.on{background:var(--abg);color:var(--a);font-weight:700;border-left-color:var(--a)}
-.nb .ni{width:18px;text-align:center;font-size:15px}
+.nb .ni{width:18px;text-align:center;font-size:15px;display:inline-flex;align-items:center;justify-content:center}
+/* Icônes (Lucide, sprite SVG embarqué) */
+.ic{width:1em;height:1em;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;vertical-align:-.15em;flex-shrink:0}
+.nb .ni .ic{width:18px;height:18px;stroke-width:1.9;opacity:.85}
+.nb.on .ni .ic{opacity:1;stroke-width:2.2}
+.ptitle{display:flex;align-items:center;gap:10px}
+.pt-ic{width:34px;height:34px;border-radius:10px;background:var(--abg);color:var(--a);display:inline-flex;align-items:center;justify-content:center;flex-shrink:0}
+.pt-ic .ic{width:19px;height:19px}
+.tb-btn{display:inline-flex;align-items:center;gap:6px}
+.tb-btn .ic{width:15px;height:15px}
+.nbell .ic{width:18px;height:18px;vertical-align:-3px}
+.dsec-t{display:flex;align-items:center;gap:8px}
+.dsec-t .ic{width:18px;height:18px;color:var(--a)}
+.stitle .ic{width:14px;height:14px;vertical-align:-2px;margin-right:4px}
+.dash-tile{position:relative}
+.dt-ic{position:absolute;top:12px;right:12px;width:30px;height:30px;border-radius:9px;display:flex;align-items:center;justify-content:center}
+.dt-ic::before{content:'';position:absolute;inset:0;border-radius:9px;background:currentColor;opacity:.12}
+.dt-ic .ic{width:16px;height:16px;position:relative}
+.dash-tile .kpi-val{padding-right:36px}
+.todo-ic,.row-ic{width:30px;height:30px;border-radius:9px;display:inline-flex;align-items:center;justify-content:center;position:relative;flex-shrink:0}
+.todo-ic::before,.row-ic::before{content:'';position:absolute;inset:0;border-radius:9px;background:currentColor;opacity:.12}
+.todo-ic .ic,.row-ic .ic{width:16px;height:16px;position:relative}
+.row-ic{width:26px;height:26px;border-radius:8px;color:var(--a)}.row-ic::before{border-radius:8px}.row-ic .ic{width:14px;height:14px}
 /* CONTENT */
 /* Zone contenu: à droite du snav, sous le topbar */
 .content,#main-content{position:fixed;left:200px;top:52px;right:0;bottom:0;overflow-y:auto}
@@ -295,7 +317,7 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--t
   <script>
     // Force rechargement si nouvelle version disponible
     (function(){
-      var APP_VERSION = '202611152100';
+      var APP_VERSION = '202611152130';
       var stored = localStorage.getItem('ntg_app_version');
       if(stored && stored !== APP_VERSION){
         localStorage.setItem('ntg_app_version', APP_VERSION);
@@ -313,6 +335,7 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--t
   </script>
 </head>
 <body>
+<svg xmlns="http://www.w3.org/2000/svg" style="display:none" aria-hidden="true" id="ntg-ic-sprite"><symbol id="i-dash" viewBox="0 0 24 24"><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></symbol><symbol id="i-folder" viewBox="0 0 24 24"><path d="m6 14 1.5-2.9A2 2 0 0 1 9.24 10H20a2 2 0 0 1 1.94 2.5l-1.54 6a2 2 0 0 1-1.95 1.5H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h3.9a2 2 0 0 1 1.69.9l.81 1.2a2 2 0 0 0 1.67.9H18a2 2 0 0 1 2 2v2"/></symbol><symbol id="i-ship" viewBox="0 0 24 24"><path d="M12 10.189V14"/><path d="M12 2v3"/><path d="M19 13V7a2 2 0 0 0-2-2H7a2 2 0 0 0-2 2v6"/><path d="M19.38 20A11.6 11.6 0 0 0 21 14l-8.188-3.639a2 2 0 0 0-1.624 0L3 14a11.6 11.6 0 0 0 2.81 7.76"/><path d="M2 21c.6.5 1.2 1 2.5 1 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1s1.2 1 2.5 1c2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1"/></symbol><symbol id="i-anchor" viewBox="0 0 24 24"><path d="M12 22V8"/><path d="M5 12H2a10 10 0 0 0 20 0h-3"/><circle cx="12" cy="5" r="3"/></symbol><symbol id="i-pkgcheck" viewBox="0 0 24 24"><path d="m16 16 2 2 4-4"/><path d="M21 10V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l2-1.14"/><path d="m7.5 4.27 9 5.15"/><polyline points="3.29 7 12 12 20.71 7"/><line x1="12" x2="12" y1="22" y2="12"/></symbol><symbol id="i-package" viewBox="0 0 24 24"><path d="M11 21.73a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73z"/><path d="M12 22V12"/><path d="m3.3 7 7.703 4.734a2 2 0 0 0 1.994 0L20.7 7"/><path d="m7.5 4.27 9 5.15"/></symbol><symbol id="i-truck" viewBox="0 0 24 24"><path d="M14 18V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v11a1 1 0 0 0 1 1h2"/><path d="M15 18H9"/><path d="M19 18h2a1 1 0 0 0 1-1v-3.65a1 1 0 0 0-.22-.624l-3.48-4.35A1 1 0 0 0 17.52 8H14"/><circle cx="17" cy="18" r="2"/><circle cx="7" cy="18" r="2"/></symbol><symbol id="i-container" viewBox="0 0 24 24"><path d="M22 7.7c0-.6-.4-1.2-.8-1.5l-6.3-3.9a1.72 1.72 0 0 0-1.7 0l-10.3 6c-.5.2-.9.8-.9 1.4v6.6c0 .5.4 1.2.8 1.5l6.3 3.9a1.72 1.72 0 0 0 1.7 0l10.3-6c.5-.3.9-1 .9-1.5Z"/><path d="M10 21.9V14L2.1 9.1"/><path d="m10 14 11.9-6.9"/><path d="M14 19.8v-8.1"/><path d="M18 17.5V9.4"/></symbol><symbol id="i-route" viewBox="0 0 24 24"><circle cx="6" cy="19" r="3"/><path d="M9 19h8.5a3.5 3.5 0 0 0 0-7h-11a3.5 3.5 0 0 1 0-7H15"/><circle cx="18" cy="5" r="3"/></symbol><symbol id="i-takeoff" viewBox="0 0 24 24"><path d="M2 22h20"/><path d="M6.36 17.4 4 17l-2-4 1.1-.55a2 2 0 0 1 1.8 0l.17.1a2 2 0 0 0 1.8 0L8 12 5 6l.9-.45a2 2 0 0 1 2.09.2l4.02 3a2 2 0 0 0 2.1.2l4.19-2.06a2.41 2.41 0 0 1 1.73-.17L21 7a1.4 1.4 0 0 1 .87 1.99l-.38.76c-.23.46-.6.84-1.07 1.08L7.58 17.2a2 2 0 0 1-1.22.18Z"/></symbol><symbol id="i-landing" viewBox="0 0 24 24"><path d="M2 22h20"/><path d="M3.77 10.77 2 9l2-4.5 1.1.55c.55.28.9.84.9 1.45s.35 1.17.9 1.45L8 8.5l3-6 1.05.53a2 2 0 0 1 1.09 1.52l.72 5.4a2 2 0 0 0 1.09 1.52l4.4 2.2c.42.22.78.55 1.01.96l.6 1.03c.49.88-.06 1.98-1.06 2.1l-1.18.15c-.47.06-.95-.02-1.37-.24L4.29 11.15a2 2 0 0 1-.52-.38Z"/></symbol><symbol id="i-receipt" viewBox="0 0 24 24"><path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1Z"/><path d="M16 8h-6a2 2 0 1 0 0 4h4a2 2 0 1 1 0 4H8"/><path d="M12 17.5v-11"/></symbol><symbol id="i-filepen" viewBox="0 0 24 24"><path d="m18 5-2.414-2.414A2 2 0 0 0 14.172 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2"/><path d="M21.378 12.626a1 1 0 0 0-3.004-3.004l-4.01 4.012a2 2 0 0 0-.506.854l-.837 2.87a.5.5 0 0 0 .62.62l2.87-.837a2 2 0 0 0 .854-.506z"/><path d="M8 18h1"/></symbol><symbol id="i-calc" viewBox="0 0 24 24"><rect width="16" height="20" x="4" y="2" rx="2"/><line x1="8" x2="16" y1="6" y2="6"/><line x1="16" x2="16" y1="14" y2="18"/><path d="M16 10h.01"/><path d="M12 10h.01"/><path d="M8 10h.01"/><path d="M12 14h.01"/><path d="M8 14h.01"/><path d="M12 18h.01"/><path d="M8 18h.01"/></symbol><symbol id="i-wallet" viewBox="0 0 24 24"><path d="M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1"/><path d="M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4"/></symbol><symbol id="i-banknote" viewBox="0 0 24 24"><rect width="20" height="12" x="2" y="6" rx="2"/><circle cx="12" cy="12" r="2"/><path d="M6 12h.01M18 12h.01"/></symbol><symbol id="i-chart" viewBox="0 0 24 24"><path d="M3 3v16a2 2 0 0 0 2 2h16"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></symbol><symbol id="i-filechart" viewBox="0 0 24 24"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M8 18v-1"/><path d="M12 18v-6"/><path d="M16 18v-3"/></symbol><symbol id="i-bell" viewBox="0 0 24 24"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></symbol><symbol id="i-users" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></symbol><symbol id="i-settings" viewBox="0 0 24 24"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></symbol><symbol id="i-siren" viewBox="0 0 24 24"><path d="M7 18v-6a5 5 0 1 1 10 0v6"/><path d="M5 21a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-1a2 2 0 0 0-2-2H7a2 2 0 0 0-2 2z"/><path d="M21 12h1"/><path d="M18.5 4.5 18 5"/><path d="M2 12h1"/><path d="M12 2v1"/><path d="m4.929 4.929.707.707"/><path d="M12 12v6"/></symbol><symbol id="i-alert" viewBox="0 0 24 24"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/></symbol><symbol id="i-hourglass" viewBox="0 0 24 24"><path d="M5 22h14"/><path d="M5 2h14"/><path d="M17 22v-4.172a2 2 0 0 0-.586-1.414L12 12l-4.414 4.414A2 2 0 0 0 7 17.828V22"/><path d="M7 2v4.172a2 2 0 0 0 .586 1.414L12 12l4.414-4.414A2 2 0 0 0 17 6.172V2"/></symbol><symbol id="i-sign" viewBox="0 0 24 24"><path d="m21 17-2.156-1.868A.5.5 0 0 0 18 15.5v.5a1 1 0 0 1-1 1h-2a1 1 0 0 1-1-1c0-2.545-3.991-3.97-8.5-4a1 1 0 0 0 0 5c4.153 0 4.745-11.295 5.708-13.5a2.5 2.5 0 1 1 3.31 3.284"/><path d="M3 21h18"/></symbol><symbol id="i-check" viewBox="0 0 24 24"><path d="M21.801 10A10 10 0 1 1 17 3.335"/><path d="m9 11 3 3L22 4"/></symbol><symbol id="i-activity" viewBox="0 0 24 24"><path d="M22 12h-2.48a2 2 0 0 0-1.93 1.46l-2.35 8.36a.25.25 0 0 1-.48 0L9.24 2.18a.25.25 0 0 0-.48 0l-2.35 8.36A2 2 0 0 1 4.49 12H2"/></symbol><symbol id="i-trending" viewBox="0 0 24 24"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></symbol><symbol id="i-calplus" viewBox="0 0 24 24"><path d="M8 2v4"/><path d="M16 2v4"/><path d="M21 13V6a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h8"/><path d="M3 10h18"/><path d="M16 19h6"/><path d="M19 16v6"/></symbol><symbol id="i-coins" viewBox="0 0 24 24"><circle cx="8" cy="8" r="6"/><path d="M18.09 10.37A6 6 0 1 1 10.34 18"/><path d="M7 6h1v4"/><path d="m16.71 13.88.7.71-2.82 2.82"/></symbol><symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></symbol><symbol id="i-inbox" viewBox="0 0 24 24"><polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></symbol><symbol id="i-handcoins" viewBox="0 0 24 24"><path d="M11 15h2a2 2 0 1 0 0-4h-3c-.6 0-1.1.2-1.4.6L3 17"/><path d="m7 21 1.6-1.4c.3-.4.8-.6 1.4-.6h4c1.1 0 2.1-.4 2.8-1.2l4.6-4.4a2 2 0 0 0-2.75-2.91l-4.2 3.9"/><path d="m2 16 6 6"/><circle cx="16" cy="9" r="2.9"/><circle cx="6" cy="5" r="3"/></symbol><symbol id="i-archive" viewBox="0 0 24 24"><rect width="20" height="5" x="2" y="3" rx="1"/><path d="M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8"/><path d="M10 12h4"/></symbol><symbol id="i-logout" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" x2="9" y1="12" y2="12"/></symbol><symbol id="i-files" viewBox="0 0 24 24"><path d="M20 7h-3a2 2 0 0 1-2-2V2"/><path d="M9 18a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h7l4 4v10a2 2 0 0 1-2 2Z"/><path d="M3 7.6v12.8A1.6 1.6 0 0 0 4.6 22h9.8"/></symbol><symbol id="i-building" viewBox="0 0 24 24"><path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/><path d="M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2"/><path d="M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2"/><path d="M10 6h4"/><path d="M10 10h4"/><path d="M10 14h4"/><path d="M10 18h4"/></symbol><symbol id="i-landmark" viewBox="0 0 24 24"><line x1="3" x2="21" y1="22" y2="22"/><line x1="6" x2="6" y1="18" y2="11"/><line x1="10" x2="10" y1="18" y2="11"/><line x1="14" x2="14" y1="18" y2="11"/><line x1="18" x2="18" y1="18" y2="11"/><polygon points="12 2 20 7 4 7"/></symbol><symbol id="i-thumbsup" viewBox="0 0 24 24"><path d="M7 10v12"/><path d="M15 5.88 14 10h5.83a2 2 0 0 1 1.92 2.56l-2.33 8A2 2 0 0 1 17.5 22H4a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2h2.76a2 2 0 0 0 1.79-1.11L12 2a3.13 3.13 0 0 1 3 3.88Z"/></symbol><symbol id="i-piggy" viewBox="0 0 24 24"><path d="M19 5c-1.5 0-2.8 1.4-3 2-3.5-1.5-11-.3-11 5 0 1.8 0 3 2 4.5V20h4v-2h3v2h4v-4c1-.5 1.7-1 2-2h2v-4h-2c0-1-.5-1.5-1-2V5z"/><path d="M2 9v1c0 1.1.9 2 2 2h1"/><path d="M16 11h.01"/></symbol><symbol id="i-listtodo" viewBox="0 0 24 24"><rect x="3" y="5" width="6" height="6" rx="1"/><path d="m3 17 2 2 4-4"/><path d="M13 6h8"/><path d="M13 12h8"/><path d="M13 18h8"/></symbol><symbol id="i-filetext" viewBox="0 0 24 24"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/></symbol><symbol id="i-mappin" viewBox="0 0 24 24"><path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0"/><circle cx="12" cy="10" r="3"/></symbol><symbol id="i-gauge" viewBox="0 0 24 24"><path d="m12 14 4-4"/><path d="M3.34 19a10 10 0 1 1 17.32 0"/></symbol></svg>
 
 <div class="toast" id="toast"><span id="t-ico"></span><span id="t-txt"></span></div>
 
@@ -371,43 +394,43 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--t
     <div class="app-logo"><img class="app-logo-img" src="icons/logo-ntg.png" alt="NTG" onerror="this.style.display='none'">La Centrale <span>NTG</span><small>v1.0</small></div>
     <span class="bureau-badge" id="bureau-badge" style="display:none"></span>
     <div class="topbar-right">
-      <button onclick="goPage('dash',null)" style="background:rgba(255,255,255,.15);border:none;color:#fff;padding:5px 12px;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer">📊 Dashboard</button>
-      <button onclick="goPage('params',null)" style="background:rgba(255,255,255,.15);border:none;color:#fff;padding:5px 12px;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer">⚙️ Paramètres</button>
-      <button class="nbell" onclick="goPage('notifs',null)">🔔<span class="nbadge" id="nc">0</span></button>
+      <button onclick="goPage('dash',null)" style="background:rgba(255,255,255,.15);border:none;color:#fff;padding:5px 12px;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer" class="tb-btn"><svg class="ic" aria-hidden="true"><use href="#i-dash"/></svg>Dashboard</button>
+      <button onclick="goPage('params',null)" style="background:rgba(255,255,255,.15);border:none;color:#fff;padding:5px 12px;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer" class="tb-btn"><svg class="ic" aria-hidden="true"><use href="#i-settings"/></svg>Paramètres</button>
+      <button class="nbell" onclick="goPage('notifs',null)" title="Notifications"><svg class="ic" aria-hidden="true"><use href="#i-bell"/></svg><span class="nbadge" id="nc">0</span></button>
       <div class="uav" id="u-av" onclick="goPage('params',null)">--</div>
       <span class="uname" id="u-name" style="cursor:pointer" onclick="goPage('params',null)">...</span>
-      <button class="btn sm" onclick="doLogout()" style="color:#fff;border-color:rgba(255,255,255,.2);background:rgba(255,255,255,.1)">Déco.</button>
+      <button class="btn sm" onclick="doLogout()" style="color:#fff;border-color:rgba(255,255,255,.2);background:rgba(255,255,255,.1);display:inline-flex;align-items:center;gap:5px" title="Se déconnecter"><svg class="ic" aria-hidden="true"><use href="#i-logout"/></svg>Déco.</button>
     </div>
   </div>
   <div class="layout">
     <nav class="snav" id="snav">
-      <button class="nb" id="nav-dash" style="display:flex!important" data-page="dash"     onclick="goPage(this.dataset.page,this)"><span class="ni">📊</span>Tableau de bord</button>
-      <button class="nb" id="nav-dos"     data-page="dos"      onclick="goPage(this.dataset.page,this)"><span class="ni">📁</span>Tous les dossiers</button>
+      <button class="nb" id="nav-dash" style="display:flex!important" data-page="dash"     onclick="goPage(this.dataset.page,this)"><span class="ni"><svg class="ic" aria-hidden="true"><use href="#i-dash"/></svg></span>Tableau de bord</button>
+      <button class="nb" id="nav-dos"     data-page="dos"      onclick="goPage(this.dataset.page,this)"><span class="ni"><svg class="ic" aria-hidden="true"><use href="#i-folder"/></svg></span>Tous les dossiers</button>
       <div style="height:1px;background:var(--bo);margin:4px 8px"></div>
       <div class="nav-section">Maritime</div>
-      <button class="nb" id="nav-exp-mar" data-page="exp-mar"  onclick="goPage(this.dataset.page,this)"><span class="ni">🚢</span>Export Maritime</button>
-      <button class="nb" id="nav-imp-mar" data-page="imp-mar"  onclick="goPage(this.dataset.page,this)"><span class="ni">🚢</span>Import Maritime</button>
-      <button class="nb" id="nav-post-emb" data-page="post-emb" onclick="goPage(this.dataset.page,this)"><span class="ni">📦</span>Post-Embarquement</button>
+      <button class="nb" id="nav-exp-mar" data-page="exp-mar"  onclick="goPage(this.dataset.page,this)"><span class="ni"><svg class="ic" aria-hidden="true"><use href="#i-ship"/></svg></span>Export Maritime</button>
+      <button class="nb" id="nav-imp-mar" data-page="imp-mar"  onclick="goPage(this.dataset.page,this)"><span class="ni"><svg class="ic" aria-hidden="true"><use href="#i-anchor"/></svg></span>Import Maritime</button>
+      <button class="nb" id="nav-post-emb" data-page="post-emb" onclick="goPage(this.dataset.page,this)"><span class="ni"><svg class="ic" aria-hidden="true"><use href="#i-pkgcheck"/></svg></span>Post-Embarquement</button>
       <div style="height:1px;background:var(--bo);margin:4px 8px"></div>
       <div class="nav-section">Terrestre</div>
-            <button class="nb" id="nav-exp-ter" data-page="exp-ter"  onclick="goPage(this.dataset.page,this)"><span class="ni">🚛</span>Export Terrestre</button>
-      <button class="nb" id="nav-imp-ter" data-page="imp-ter"  onclick="goPage(this.dataset.page,this)"><span class="ni">🚛</span>Import Terrestre</button>
-      <button class="nb" id="nav-transit"  data-page="transit"  onclick="goPage(this.dataset.page,this)"><span class="ni">🔄</span>Transit</button>
+            <button class="nb" id="nav-exp-ter" data-page="exp-ter"  onclick="goPage(this.dataset.page,this)"><span class="ni"><svg class="ic" aria-hidden="true"><use href="#i-truck"/></svg></span>Export Terrestre</button>
+      <button class="nb" id="nav-imp-ter" data-page="imp-ter"  onclick="goPage(this.dataset.page,this)"><span class="ni"><svg class="ic" aria-hidden="true"><use href="#i-truck"/></svg></span>Import Terrestre</button>
+      <button class="nb" id="nav-transit"  data-page="transit"  onclick="goPage(this.dataset.page,this)"><span class="ni"><svg class="ic" aria-hidden="true"><use href="#i-route"/></svg></span>Transit</button>
       <div style="height:1px;background:var(--bo);margin:4px 8px"></div>
       <div class="nav-section">Aérien</div>
-      <button class="nb" id="nav-exp-aer" data-page="exp-aer"  onclick="goPage(this.dataset.page,this)"><span class="ni">✈️</span>Export Aérien</button>
-      <button class="nb" id="nav-imp-aer" data-page="imp-aer"  onclick="goPage(this.dataset.page,this)"><span class="ni">✈️</span>Import Aérien</button>
+      <button class="nb" id="nav-exp-aer" data-page="exp-aer"  onclick="goPage(this.dataset.page,this)"><span class="ni"><svg class="ic" aria-hidden="true"><use href="#i-takeoff"/></svg></span>Export Aérien</button>
+      <button class="nb" id="nav-imp-aer" data-page="imp-aer"  onclick="goPage(this.dataset.page,this)"><span class="ni"><svg class="ic" aria-hidden="true"><use href="#i-landing"/></svg></span>Import Aérien</button>
       <div style="height:1px;background:var(--bo);margin:4px 8px"></div>
       <div class="nav-section">Finance</div>
-      <button class="nb" id="nav-fact"    data-page="fact" onclick="goPage(this.dataset.page,this)"><span class="ni">🧾</span>Facturation</button>
-      <button class="nb" id="nav-proforma" data-page="proforma" onclick="goPage(this.dataset.page,this)"><span class="ni">📝</span>Pro-forma</button>
-      <button class="nb" id="nav-budgets" data-page="budgets" onclick="goPage(this.dataset.page,this)"><span class="ni">📋</span>Budgets</button>
-      <button class="nb" id="nav-dep"     data-page="depenses" onclick="goPage(this.dataset.page,this)"><span class="ni">💰</span>Dépenses</button>
-      <button class="nb" id="nav-rpt"     data-page="rapports" onclick="goPage(this.dataset.page,this)"><span class="ni">📊</span>Rapports PDF</button>
+      <button class="nb" id="nav-fact"    data-page="fact" onclick="goPage(this.dataset.page,this)"><span class="ni"><svg class="ic" aria-hidden="true"><use href="#i-receipt"/></svg></span>Facturation</button>
+      <button class="nb" id="nav-proforma" data-page="proforma" onclick="goPage(this.dataset.page,this)"><span class="ni"><svg class="ic" aria-hidden="true"><use href="#i-filepen"/></svg></span>Pro-forma</button>
+      <button class="nb" id="nav-budgets" data-page="budgets" onclick="goPage(this.dataset.page,this)"><span class="ni"><svg class="ic" aria-hidden="true"><use href="#i-calc"/></svg></span>Budgets</button>
+      <button class="nb" id="nav-dep"     data-page="depenses" onclick="goPage(this.dataset.page,this)"><span class="ni"><svg class="ic" aria-hidden="true"><use href="#i-banknote"/></svg></span>Dépenses</button>
+      <button class="nb" id="nav-rpt"     data-page="rapports" onclick="goPage(this.dataset.page,this)"><span class="ni"><svg class="ic" aria-hidden="true"><use href="#i-filechart"/></svg></span>Rapports PDF</button>
       <div style="height:1px;background:var(--bo);margin:4px 8px"></div>
-      <button class="nb" id="nav-notifs"  data-page="notifs"   onclick="goPage(this.dataset.page,this)"><span class="ni">🔔</span>Notifications</button>
-      <button class="nb" id="nav-clients" data-page="clients"  onclick="goPage(this.dataset.page,this)"><span class="ni">👥</span>Clients</button>
-      <button class="nb" id="nav-params" style="display:flex!important" data-page="params"   onclick="goPage(this.dataset.page,this)"><span class="ni">⚙️</span>Paramètres</button>
+      <button class="nb" id="nav-notifs"  data-page="notifs"   onclick="goPage(this.dataset.page,this)"><span class="ni"><svg class="ic" aria-hidden="true"><use href="#i-bell"/></svg></span>Notifications</button>
+      <button class="nb" id="nav-clients" data-page="clients"  onclick="goPage(this.dataset.page,this)"><span class="ni"><svg class="ic" aria-hidden="true"><use href="#i-users"/></svg></span>Clients</button>
+      <button class="nb" id="nav-params" style="display:flex!important" data-page="params"   onclick="goPage(this.dataset.page,this)"><span class="ni"><svg class="ic" aria-hidden="true"><use href="#i-settings"/></svg></span>Paramètres</button>
     </nav>
     <div class="content" id="main-content">
     
@@ -438,11 +461,11 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--t
 <!-- PAGE DASH -->
   <div class="page on" id="page-dash">
     <div style="max-width:1200px;margin:0 auto">
-      <div class="ph"><h1 class="ptitle">📊 Tableau de bord</h1><span id="dash-date" style="font-size:13px;color:var(--t3)"></span></div>
-      <div class="dsec-t">⚙️ Opérations</div>
+      <div class="ph"><h1 class="ptitle"><span class="pt-ic"><svg class="ic" aria-hidden="true"><use href="#i-dash"/></svg></span>Tableau de bord</h1><span id="dash-date" style="font-size:13px;color:var(--t3)"></span></div>
+      <div class="dsec-t"><svg class="ic" aria-hidden="true"><use href="#i-activity"/></svg>Opérations</div>
       <div class="kpi-grid" id="dash-ops-kpis"><div class="loader"><span class="sp2"></span>Chargement...</div></div>
       <div class="dgrid2">
-        <div class="card"><div class="stitle">🚨 À traiter</div><div id="dash-todo"></div></div>
+        <div class="card"><div class="stitle"><svg class="ic" aria-hidden="true"><use href="#i-siren"/></svg>À traiter</div><div id="dash-todo"></div></div>
         <div class="card"><div class="stitle">Dossiers en cours par type</div><div id="stats-type"></div></div>
       </div>
       <div id="bureaux-section">
@@ -450,7 +473,7 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--t
         <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px;margin-bottom:16px" id="bureaux-grid"><div class="empty">Chargement...</div></div>
       </div>
       <div id="dash-fin-section" style="display:none">
-        <div class="dsec-t">💰 Finances</div>
+        <div class="dsec-t"><svg class="ic" aria-hidden="true"><use href="#i-wallet"/></svg>Finances</div>
         <div class="kpi-grid" id="dash-fin-kpis"></div>
         <div class="dgrid2">
           <div class="card"><div class="stitle">Ancienneté des créances (retard après échéance)</div><div id="dash-aging"></div></div>
@@ -467,7 +490,7 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--t
   <div class="page" id="page-dos">
     <div style="max-width:1100px;margin:0 auto">
       <div class="ph">
-        <h1 class="ptitle">📁 Tous les dossiers</h1>
+        <h1 class="ptitle"><span class="pt-ic"><svg class="ic" aria-hidden="true"><use href="#i-folder"/></svg></span>Tous les dossiers</h1>
         <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn obtn" onclick="ouvrirImportDecl()">📥 Importer des déclarations</button><button class="btn gbtn" onclick="openNouveauDossier('')">＋ Nouveau dossier</button></div>
       </div>
       <div class="card">
@@ -507,42 +530,42 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--t
   <!-- PAGES PAR TYPE (renvoient vers la page dossiers filtrée) -->
   <div class="page" id="page-exp-mar">
     <div style="max-width:1100px;margin:0 auto">
-      <div class="ph"><h1 class="ptitle">🚢 Export Maritime</h1><button class="btn gbtn" onclick="ouvrirNouveauBooking()">＋ Nouveau booking</button></div>
+      <div class="ph"><h1 class="ptitle"><span class="pt-ic"><svg class="ic" aria-hidden="true"><use href="#i-ship"/></svg></span>Export Maritime</h1><button class="btn gbtn" onclick="ouvrirNouveauBooking()">＋ Nouveau booking</button></div>
       <div id="bkgs-content"><div class="loader"><span class="sp2"></span>Chargement...</div></div>
     </div>
   </div>
 
   <div class="page" id="page-imp-mar">
     <div style="max-width:1100px;margin:0 auto">
-      <div class="ph"><h1 class="ptitle">🚢 Import Maritime</h1><button class="btn gbtn" onclick="openNouveauDossier('import_maritime')">＋ Nouveau dossier</button></div>
+      <div class="ph"><h1 class="ptitle"><span class="pt-ic"><svg class="ic" aria-hidden="true"><use href="#i-anchor"/></svg></span>Import Maritime</h1><button class="btn gbtn" onclick="openNouveauDossier('import_maritime')">＋ Nouveau dossier</button></div>
       <div id="imp-mar-list"><div class="loader"><span class="sp2"></span>Chargement...</div></div>
     </div>
   </div>
 
   <div class="page" id="page-exp-ter">
     <div style="max-width:1100px;margin:0 auto">
-      <div class="ph"><h1 class="ptitle">🚛 Export Terrestre</h1><button class="btn gbtn" onclick="openNouveauDossier('export_terrestre')">＋ Nouveau dossier</button></div>
+      <div class="ph"><h1 class="ptitle"><span class="pt-ic"><svg class="ic" aria-hidden="true"><use href="#i-truck"/></svg></span>Export Terrestre</h1><button class="btn gbtn" onclick="openNouveauDossier('export_terrestre')">＋ Nouveau dossier</button></div>
       <div id="exp-ter-list"><div class="loader"><span class="sp2"></span>Chargement...</div></div>
     </div>
   </div>
 
   <div class="page" id="page-imp-ter">
     <div style="max-width:1100px;margin:0 auto">
-      <div class="ph"><h1 class="ptitle">🚛 Import Terrestre</h1><button class="btn gbtn" onclick="openNouveauDossier('import_terrestre')">＋ Nouveau dossier</button></div>
+      <div class="ph"><h1 class="ptitle"><span class="pt-ic"><svg class="ic" aria-hidden="true"><use href="#i-truck"/></svg></span>Import Terrestre</h1><button class="btn gbtn" onclick="openNouveauDossier('import_terrestre')">＋ Nouveau dossier</button></div>
       <div id="imp-ter-list"><div class="loader"><span class="sp2"></span>Chargement...</div></div>
     </div>
   </div>
 
   <div class="page" id="page-exp-aer">
     <div style="max-width:1100px;margin:0 auto">
-      <div class="ph"><h1 class="ptitle">✈️ Export Aérien</h1><button class="btn gbtn" onclick="openNouveauDossier('export_aerien')">＋ Nouveau dossier</button></div>
+      <div class="ph"><h1 class="ptitle"><span class="pt-ic"><svg class="ic" aria-hidden="true"><use href="#i-takeoff"/></svg></span>Export Aérien</h1><button class="btn gbtn" onclick="openNouveauDossier('export_aerien')">＋ Nouveau dossier</button></div>
       <div id="exp-aer-list"><div class="loader"><span class="sp2"></span>Chargement...</div></div>
     </div>
   </div>
 
   <div class="page" id="page-imp-aer">
     <div style="max-width:1100px;margin:0 auto">
-      <div class="ph"><h1 class="ptitle">✈️ Import Aérien</h1><button class="btn gbtn" onclick="openNouveauDossier('import_aerien')">＋ Nouveau dossier</button></div>
+      <div class="ph"><h1 class="ptitle"><span class="pt-ic"><svg class="ic" aria-hidden="true"><use href="#i-landing"/></svg></span>Import Aérien</h1><button class="btn gbtn" onclick="openNouveauDossier('import_aerien')">＋ Nouveau dossier</button></div>
       <div id="imp-aer-list"><div class="loader"><span class="sp2"></span>Chargement...</div></div>
     </div>
   </div>
@@ -550,7 +573,7 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--t
   <!-- PAGE DEPENSES -->
   <div class="page" id="page-depenses">
     <div style="max-width:1100px;margin:0 auto">
-      <div class="ph"><h1 class="ptitle">💰 Dépenses</h1><button class="btn gbtn" onclick="buildDepSel();openM('m-dep')">＋ Ajouter</button></div>
+      <div class="ph"><h1 class="ptitle"><span class="pt-ic"><svg class="ic" aria-hidden="true"><use href="#i-banknote"/></svg></span>Dépenses</h1><button class="btn gbtn" onclick="buildDepSel();openM('m-dep')">＋ Ajouter</button></div>
       <div class="card">
         <div class="frow">
           <span class="fchip on" onclick="filterDep(this,'tous')">Tous</span>
@@ -569,7 +592,7 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--t
   <!-- PAGE RAPPORTS -->
   <div class="page" id="page-rapports">
     <div style="max-width:980px;margin:0 auto">
-      <div class="ph"><h1 class="ptitle">📊 Rapports PDF</h1></div>
+      <div class="ph"><h1 class="ptitle"><span class="pt-ic"><svg class="ic" aria-hidden="true"><use href="#i-filechart"/></svg></span>Rapports PDF</h1></div>
       <div class="card mb12">
         <div class="stitle" style="margin-bottom:10px">⚙️ Filtres</div>
         <div class="g2 mb8">
@@ -624,7 +647,7 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--t
   <!-- PAGE NOTIFS -->
   <div class="page" id="page-notifs">
     <div style="max-width:800px;margin:0 auto">
-      <div class="ph"><h1 class="ptitle">🔔 Notifications</h1><button class="btn" onclick="markAllRead()">Tout marquer lu</button></div>
+      <div class="ph"><h1 class="ptitle"><span class="pt-ic"><svg class="ic" aria-hidden="true"><use href="#i-bell"/></svg></span>Notifications</h1><button class="btn" onclick="markAllRead()">Tout marquer lu</button></div>
       <div id="notifs-list"><div class="loader"><span class="sp2"></span>Chargement...</div></div>
     </div>
   </div>
@@ -632,7 +655,7 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--t
   <!-- PAGE CLIENTS -->
   <div class="page" id="page-clients">
     <div style="max-width:900px;margin:0 auto">
-      <div class="ph"><h1 class="ptitle">👥 Clients</h1><button class="btn gbtn" onclick="openM('m-client')">＋ Nouveau client</button></div>
+      <div class="ph"><h1 class="ptitle"><span class="pt-ic"><svg class="ic" aria-hidden="true"><use href="#i-users"/></svg></span>Clients</h1><button class="btn gbtn" onclick="openM('m-client')">＋ Nouveau client</button></div>
       <div class="card">
         <div class="frow"><div class="swrap"><input type="text" id="cl-search" placeholder="Rechercher un client..." oninput="searchClient(this.value)"></div></div>
         <div id="clients-list"><div class="loader"><span class="sp2"></span>Chargement...</div></div>
@@ -643,7 +666,7 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--t
   <!-- PAGE PARAMS -->
   <div class="page" id="page-fact">
     <div style="max-width:1200px;margin:0 auto">
-      <div class="ph"><h1 class="ptitle">🧾 Facturation</h1>
+      <div class="ph"><h1 class="ptitle"><span class="pt-ic"><svg class="ic" aria-hidden="true"><use href="#i-receipt"/></svg></span>Facturation</h1>
         <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" onclick="factReleveClient()">📄 Relevé client</button><button class="btn gbtn" onclick="factNouvelle()">＋ Nouvelle facture</button></div>
       </div>
       <div class="kpi-grid" id="fact-kpis"></div>
@@ -669,7 +692,7 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--t
   
 <div class="page" id="page-proforma">
     <div style="max-width:1200px;margin:0 auto">
-      <div class="ph"><h1 class="ptitle">📝 Pro-forma / cotations</h1><button class="btn gbtn" onclick="pfNouvelle()">＋ Nouvelle pro-forma</button></div>
+      <div class="ph"><h1 class="ptitle"><span class="pt-ic"><svg class="ic" aria-hidden="true"><use href="#i-filepen"/></svg></span>Pro-forma / cotations</h1><button class="btn gbtn" onclick="pfNouvelle()">＋ Nouvelle pro-forma</button></div>
       <div class="card">
         <div class="frow">
           <span class="fchip on" data-f="tous" onclick="pfFiltrer(this.dataset.f)">Toutes</span>
@@ -685,7 +708,7 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--t
 
   <div class="page" id="page-budgets">
     <div style="max-width:1200px;margin:0 auto">
-      <div class="ph" style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap"><h1 class="ptitle">📋 Budgets prévisionnels</h1><button class="btn gbtn" id="bud-btn-new" style="display:none" onclick="budChoisirSource()">＋ Nouveau budget</button></div>
+      <div class="ph" style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap"><h1 class="ptitle"><span class="pt-ic"><svg class="ic" aria-hidden="true"><use href="#i-calc"/></svg></span>Budgets prévisionnels</h1><button class="btn gbtn" id="bud-btn-new" style="display:none" onclick="budChoisirSource()">＋ Nouveau budget</button></div>
       <div class="kpi-grid" id="bud-kpis"></div>
       <div class="card">
         <div class="frow">
@@ -703,7 +726,7 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--t
 
   <div class="page" id="page-params">
     <div style="max-width:900px;margin:0 auto">
-      <div class="ph"><h1 class="ptitle">⚙️ Paramètres</h1></div>
+      <div class="ph"><h1 class="ptitle"><span class="pt-ic"><svg class="ic" aria-hidden="true"><use href="#i-settings"/></svg></span>Paramètres</h1></div>
       <div class="card mb8" id="params-pieces" style="display:none"></div>
       <div class="card mb8" id="params-bareme" style="display:none"></div>
       <div class="card mb8" id="params-facturation" style="display:none"></div>
@@ -767,7 +790,7 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--t
     <div style="max-width:1100px;margin:0 auto">
       <div class="ph">
         <div>
-          <h1 class="ptitle">📦 Post-Embarquement</h1>
+          <h1 class="ptitle"><span class="pt-ic"><svg class="ic" aria-hidden="true"><use href="#i-pkgcheck"/></svg></span>Post-Embarquement</h1>
           <div style="font-size:12px;color:var(--t3);margin-top:2px">Suivi des opérations après embarquement — Bookings clôturés</div>
         </div>
       </div>
@@ -788,7 +811,7 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--t
   <div class="page" id="page-transit">
     <div style="max-width:1100px;margin:0 auto">
       <div class="ph">
-        <div><h1 class="ptitle">🔄 Transit</h1>
+        <div><h1 class="ptitle"><span class="pt-ic"><svg class="ic" aria-hidden="true"><use href="#i-route"/></svg></span>Transit</h1>
         <div style="font-size:12px;color:var(--t3);margin-top:2px">Dossiers de transit — passage des marchandises</div></div>
         <button class="btn gbtn" onclick="openNouveauDossier('transit')">＋ Nouveau dossier</button>
       </div>
@@ -1707,6 +1730,13 @@ function openDepDossier(dosId){
 // =============================================
 // TABLEAU DE BORD
 // =============================================
+// ---- Icônes (sprite #ntg-ic-sprite) ----
+var EMO_IC={'🚨':'siren','📋':'calc','💰':'wallet','✍':'sign','⏳':'hourglass','🧾':'receipt','🚢':'ship','🚛':'truck','✈':'takeoff','🔄':'route','📦':'package',
+  '👍':'thumbsup','📁':'folder','⚠':'alert','⚓':'anchor','🛃':'landmark','📍':'mappin','📊':'chart','🔔':'bell','👥':'users','⚙':'settings','💵':'coins','📝':'filepen'};
+var TYPE_IC={export_maritime:'ship',import_maritime:'anchor',export_terrestre:'truck',import_terrestre:'truck',export_aerien:'takeoff',import_aerien:'landing',transit:'route'};
+function ic(n,cls){return '<svg class="ic'+(cls?' '+cls:'')+'" aria-hidden="true"><use href="#i-'+n+'"/></svg>';}
+function icE(e){var k=EMO_IC[String(e||'').replace(/\uFE0F/g,'').trim()];return k?ic(k):(e||'');}
+function icType(t,e){return TYPE_IC[t]?ic(TYPE_IC[t]):icE(e);}
 async function majDash(){
   try{
     var el=function(id){return document.getElementById(id);};
@@ -1739,19 +1769,19 @@ async function majDash(){
       .map(function(b){return {num:b.numero,type:'export_maritime',client:(b.clients&&b.clients.nom)||'',id:b.id,bkg:true};}));
 
     // ---- OPÉRATIONS ----
-    var tile=function(v,l,sub,c,onclick){return '<div class="kpi dash-tile" style="border-left-color:'+(c||'var(--bo)')+(onclick?';cursor:pointer" onclick="'+onclick+'"':'"')+'><div class="kpi-val" style="color:'+(c||'var(--nv)')+'">'+v+'</div><div class="kpi-lbl">'+l+'</div>'+(sub?'<div class="kpi-sub">'+sub+'</div>':'')+'</div>';};
+    var tile=function(v,l,sub,c,onclick,ico){return '<div class="kpi dash-tile" style="border-left-color:'+(c||'var(--bo)')+(onclick?';cursor:pointer" onclick="'+onclick+'"':'"')+'>'+(ico?'<span class="dt-ic" style="color:'+(c||'var(--nv)')+'">'+ic(ico)+'</span>':'')+'<div class="kpi-val" style="color:'+(c||'var(--nv)')+'">'+v+'</div><div class="kpi-lbl">'+l+'</div>'+(sub?'<div class="kpi-sub">'+sub+'</div>':'')+'</div>';};
     var ok=el('dash-ops-kpis');
-    if(ok)ok.innerHTML=tile(dosEC.length+bkEC.length,'Dossiers en cours',bkEC.length+' export maritime · '+dosEC.length+' autres','var(--nv)',"goPage('dos',document.getElementById('nav-dos'))")
-      +tile(nouveaux,'Nouveaux (7 jours)','','var(--b)')
-      +tile(bloques.length,'Sans avancée > 5 j','aucune étape validée',bloques.length?'var(--d)':'var(--a)')
-      +tile(aFacturer.length,'À facturer','clôturés ou déclarés',aFacturer.length?'var(--w)':'var(--a)',finances?"goPage('fact',document.getElementById('nav-fact'))":'')
-      +tile(clotures,'Clôturés','total','var(--t2)');
+    if(ok)ok.innerHTML=tile(dosEC.length+bkEC.length,'Dossiers en cours',bkEC.length+' export maritime · '+dosEC.length+' autres','var(--nv)',"goPage('dos',document.getElementById('nav-dos'))",'folder')
+      +tile(nouveaux,'Nouveaux (7 jours)','','var(--b)','','calplus')
+      +tile(bloques.length,'Sans avancée > 5 j','aucune étape validée',bloques.length?'var(--d)':'var(--a)','','hourglass')
+      +tile(aFacturer.length,'À facturer','clôturés ou déclarés',aFacturer.length?'var(--w)':'var(--a)',finances?"goPage('fact',document.getElementById('nav-fact'))":'','receipt')
+      +tile(clotures,'Clôturés','total','var(--t2)','','check');
 
     // À traiter
     var todo='';
     var badAl=[];try{badAl=await impBadAlertes();}catch(e){}
     var budG=[];if(typeof budVoit==='function'&&budVoit()){try{budG=await budSituationGlobale();}catch(e){}}
-    var item=function(ico,txt,sub,attr,c){return '<div class="todo-it" '+attr+'><span style="font-size:16px">'+ico+'</span><div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:600;color:'+(c||'var(--t)')+'">'+txt+'</div>'+(sub?'<div style="font-size:11px;color:var(--t3)">'+sub+'</div>':'')+'</div></div>';};
+    var item=function(ico,txt,sub,attr,c){return '<div class="todo-it" '+attr+'><span class="todo-ic" style="color:'+(c||'var(--a)')+'">'+icE(ico)+'</span><div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:600;color:'+(c||'var(--t)')+'">'+txt+'</div>'+(sub?'<div style="font-size:11px;color:var(--t3)">'+sub+'</div>':'')+'</div></div>';};
     badAl.forEach(function(x){todo+=item('🚨',escH(x.d.numero_ntg||'')+' — BAD '+(x.j<0?'dépassé de '+(-x.j)+' j':(x.j===0?'expire aujourd\'hui':'expire dans '+x.j+' j')),'Surestaries : rendre le conteneur vide · BL '+escH(x.d.identifiant_principal||''),'data-did="'+x.d.id+'" onclick="ouvrirDossier(this.dataset.did)"','var(--d)');});
     budG.filter(function(x){return x.s.depasseTotal;}).forEach(function(x){todo+=item('📋',escH(budLabelSource(x.b).split(' · ')[0])+' — budget dépassé de '+factFmt(-x.s.reste),factFmt(x.s.depense)+' dépensés pour '+factFmt(x.s.total)+' prévus','data-t="'+(x.b.booking_id?'bkg':'dos')+'" data-id="'+(x.b.booking_id||x.b.dossier_id)+'" onclick="budOuvrir(this.dataset.t,this.dataset.id)"','var(--d)');});
     if(typeof budPeutFinancer==='function'&&budPeutFinancer())budG.filter(function(x){return x.b.statut==='transmis';}).forEach(function(x){todo+=item('💰','Fonds à mettre à disposition — '+escH(budLabelSource(x.b).split(' · ')[0]),factFmt(x.b.total)+' FCFA · transmis le '+fDate(x.b.transmis_le),'data-t="'+(x.b.booking_id?'bkg':'dos')+'" data-id="'+(x.b.booking_id||x.b.dossier_id)+'" onclick="budOuvrir(this.dataset.t,this.dataset.id)"','var(--w)');});
@@ -1761,7 +1791,7 @@ async function majDash(){
     }
     bloques.slice(0,5).forEach(function(x){var ti=getTypeInfo(x.d.type_dossier);todo+=item('⏳',escH(x.d.numero_ntg||'')+' — '+x.j+' jours sans avancée',ti.l+' · '+escH((x.d.clients&&x.d.clients.nom)||''),'data-did="'+x.d.id+'" onclick="ouvrirDossier(this.dataset.did)"','var(--d)');});
     if(finances)aFacturer.slice(0,5).forEach(function(x){var ti=getTypeInfo(x.type);todo+=item('🧾',escH(x.num||'')+' — à facturer',ti.l+' · '+escH(x.client),x.bkg?'data-bid="'+x.id+'" onclick="factNouvelle({booking_id:this.dataset.bid})"':'data-did="'+x.id+'" onclick="factNouvelle({dossier_id:this.dataset.did})"','var(--w)');});
-    var td=el('dash-todo');if(td)td.innerHTML=todo||'<div class="empty" style="padding:14px">Rien d\'urgent 👍</div>';
+    var td=el('dash-todo');if(td)td.innerHTML=todo||'<div class="empty" style="padding:14px">'+ic('thumbsup')+' Rien d\'urgent</div>';
 
     // Par type (en cours / total)
     var sg=el('stats-type');
@@ -1770,7 +1800,7 @@ async function majDash(){
       if(t.k==='export_maritime'){tot=allBkgs.length;ec=bkEC.length;}
       else{var lst=allDossiers.filter(function(d){return d.type_dossier===t.k;});tot=lst.length;ec=lst.filter(function(d){return d.statut==='en_cours';}).length;}
       var pct=tot?Math.round(ec*100/tot):0;
-      return '<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--bo)"><span style="font-size:16px;width:22px">'+t.ico+'</span><span style="flex:1;font-size:13px">'+t.l+'</span>'
+      return '<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--bo)"><span class="row-ic">'+icType(t.k,t.ico)+'</span><span style="flex:1;font-size:13px">'+t.l+'</span>'
         +'<div style="width:90px;height:6px;background:var(--bg3);border-radius:3px;overflow:hidden"><div style="height:100%;width:'+pct+'%;background:var(--a)"></div></div>'
         +'<span style="font-size:13px;font-weight:700;min-width:64px;text-align:right">'+ec+' <span style="color:var(--t3);font-weight:500">/ '+tot+'</span></span></div>';
     }).join('');
@@ -1786,7 +1816,7 @@ async function majDash(){
           var bkgsBur=bkEC.filter(function(x){return x.poste_frontiere===b.k;});
           var dosBur=dosEC.filter(function(x){return x.bureau_douane===b.k;});
           var tot=bkgsBur.length+dosBur.length;if(!tot)return;
-          bHtml+='<div class="bureau-col"><div class="bureau-hdr">'+b.ico+' '+b.l+'<span class="badge bg" style="margin-left:6px">'+tot+'</span></div><div class="bureau-body">';
+          bHtml+='<div class="bureau-col"><div class="bureau-hdr">'+icE(b.ico)+' '+b.l+'<span class="badge bg" style="margin-left:6px">'+tot+'</span></div><div class="bureau-body">';
           bkgsBur.slice(0,3).forEach(function(bkg){bHtml+='<div class="mini-dos" data-bid="'+bkg.id+'" onclick="ouvrirBooking(this.dataset.bid)"><div style="font-size:12px;font-weight:700" class="mono">'+escH(bkg.numero||'')+'</div><div style="font-size:11px;color:var(--t3)"><span class="dtype d-exp-mar">🚢 Export Mar.</span></div></div>';});
           dosBur.slice(0,3).forEach(function(dos){var ti=getTypeInfo(dos.type_dossier);bHtml+='<div class="mini-dos" data-did="'+dos.id+'" onclick="ouvrirDossier(this.dataset.did)"><div style="font-size:12px;font-weight:700" class="mono">'+escH(dos.numero_ntg||'')+'</div><div style="font-size:11px;color:var(--t3)"><span class="dtype '+ti.cls+'">'+ti.ico+' '+ti.l+'</span></div></div>';});
           if(tot>6)bHtml+='<div style="font-size:11px;color:var(--t3);padding:4px 6px">+'+(tot-6)+' autres...</div>';
@@ -1811,17 +1841,17 @@ async function majDash(){
       });
       var F=function(n){return factFmt(n);};
       var fk=el('dash-fin-kpis');
-      var ft=function(v,l,sub,c,f){return '<div class="kpi dash-tile" style="cursor:pointer;border-left-color:'+c+'" onclick="goPage(\'fact\',document.getElementById(\'nav-fact\'));'+(f?'setTimeout(function(){factFiltrer(\''+f+'\')},400)':'')+'"><div class="kpi-val" style="font-size:19px;color:'+c+'">'+F(v)+'</div><div class="kpi-lbl">'+l+'</div>'+(sub?'<div class="kpi-sub">'+sub+'</div>':'')+'</div>';};
-      if(fk)fk.innerHTML=ft(st.caMois,'Chiffre d\'affaires du mois','prestations HT (hors débours et TVA)','var(--a)','')
-        +ft(st.factMois,'Facturé TTC du mois','','var(--b)','')
-        +ft(st.encMois,'Encaissé ce mois','','var(--a)','')
-        +ft(st.creances,'Reste à encaisser','factures émises','var(--b)','impayees')
-        +ft(st.retard,'En retard',st.nbRetard+' facture(s)',st.retard?'var(--d)':'var(--a)','retard')
-        +ft(st.aDeposer,'Factures non déposées',st.nbADeposer+' facture(s) — l\'échéance ne court pas',st.nbADeposer?'var(--w)':'var(--a)','a_deposer')
-        +ft(deboursNonFact,'Dépenses non encore facturées','avancées pour les clients','var(--w)','')
-        +ft(depMois,'Dépenses du mois','','var(--t2)','')
+      var ft=function(v,l,sub,c,f,ico){return '<div class="kpi dash-tile" style="cursor:pointer;border-left-color:'+c+'" onclick="goPage(\'fact\',document.getElementById(\'nav-fact\'));'+(f?'setTimeout(function(){factFiltrer(\''+f+'\')},400)':'')+'">'+(ico?'<span class="dt-ic" style="color:'+c+'">'+ic(ico)+'</span>':'')+'<div class="kpi-val" style="font-size:19px;color:'+c+'">'+F(v)+'</div><div class="kpi-lbl">'+l+'</div>'+(sub?'<div class="kpi-sub">'+sub+'</div>':'')+'</div>';};
+      if(fk)fk.innerHTML=ft(st.caMois,'Chiffre d\'affaires du mois','prestations HT (hors débours et TVA)','var(--a)','','trending')
+        +ft(st.factMois,'Facturé TTC du mois','','var(--b)','','receipt')
+        +ft(st.encMois,'Encaissé ce mois','','var(--a)','','coins')
+        +ft(st.creances,'Reste à encaisser','factures émises','var(--b)','impayees','handcoins')
+        +ft(st.retard,'En retard',st.nbRetard+' facture(s)',st.retard?'var(--d)':'var(--a)','retard','clock')
+        +ft(st.aDeposer,'Factures non déposées',st.nbADeposer+' facture(s) — l\'échéance ne court pas',st.nbADeposer?'var(--w)':'var(--a)','a_deposer','inbox')
+        +ft(deboursNonFact,'Dépenses non encore facturées','avancées pour les clients','var(--w)','','banknote')
+        +ft(depMois,'Dépenses du mois','','var(--t2)','','wallet')
         +(function(){var tr=budG.filter(function(x){return x.b.statut==='transmis';});var v=tr.reduce(function(a,x){return a+factNum(x.b.total);},0);
-          return '<div class="kpi dash-tile" style="cursor:pointer;border-left-color:var(--w)" onclick="goPage(\'budgets\',document.getElementById(\'nav-budgets\'))"><div class="kpi-val" style="font-size:19px;color:var(--w)">'+factFmt(v)+'</div><div class="kpi-lbl">Fonds à mettre à disposition</div><div class="kpi-sub">'+tr.length+' budget(s) transmis</div></div>';})();
+          return '<div class="kpi dash-tile" style="cursor:pointer;border-left-color:var(--w)" onclick="goPage(\'budgets\',document.getElementById(\'nav-budgets\'))"><span class="dt-ic" style="color:var(--w)">'+ic('piggy')+'</span><div class="kpi-val" style="font-size:19px;color:var(--w)">'+factFmt(v)+'</div><div class="kpi-lbl">Fonds à mettre à disposition</div><div class="kpi-sub">'+tr.length+' budget(s) transmis</div></div>';})();
       // Ancienneté des créances
       var ag=el('dash-aging');
       if(ag){
@@ -1852,7 +1882,7 @@ async function majDash(){
       rc.innerHTML=recent.map(function(r){
         var ti=getTypeInfo(r.type);
         var attr=r.isBkg?'data-bid="'+r.id+'" onclick="ouvrirBooking(this.dataset.bid)"':'data-did="'+r.id+'" onclick="ouvrirDossier(this.dataset.did)"';
-        return '<div class="dcard" style="margin-bottom:6px" '+attr+'><span style="font-size:18px">'+ti.ico+'</span><div style="flex:1;min-width:0"><div style="display:flex;gap:6px;align-items:center"><span class="mono" style="font-size:13px;font-weight:700">'+escH(r.num||'---')+'</span><span class="dtype '+ti.cls+'">'+ti.l+'</span>'+(r.d&&typeof declBadge==='function'?declBadge(r.d):'')+'</div><div style="font-size:12px;color:var(--t3)">'+escH(r.client)+' · '+fDate(r.date)+'</div></div></div>';
+        return '<div class="dcard" style="margin-bottom:6px" '+attr+'><span class="row-ic" style="width:32px;height:32px">'+icType(r.type,ti.ico)+'</span><div style="flex:1;min-width:0"><div style="display:flex;gap:6px;align-items:center"><span class="mono" style="font-size:13px;font-weight:700">'+escH(r.num||'---')+'</span><span class="dtype '+ti.cls+'">'+ti.l+'</span>'+(r.d&&typeof declBadge==='function'?declBadge(r.d):'')+'</div><div style="font-size:12px;color:var(--t3)">'+escH(r.client)+' · '+fDate(r.date)+'</div></div></div>';
       }).join('')||'<div class="empty">Aucun dossier récent</div>';
     }
   }catch(err){console.error('majDash:',err);}
