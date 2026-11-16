@@ -320,7 +320,7 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--t
   <script>
     // Force rechargement si nouvelle version disponible
     (function(){
-      var APP_VERSION = '202611161430';
+      var APP_VERSION = '202611161515';
       var stored = localStorage.getItem('ntg_app_version');
       if(stored && stored !== APP_VERSION){
         localStorage.setItem('ntg_app_version', APP_VERSION);
@@ -1681,10 +1681,12 @@ function getLabelIdentifiant(type){
 }
 
 async function validerEtape(dosId,codeEtape,libelleEtape){
-  const etExist=await sb.from('etapes_dossier').select('id,statut').eq('dossier_id',dosId).eq('code_etape',codeEtape).single();
+  // plusieurs lignes possibles pour une même étape (anciennes données) : on les met toutes à jour, sans en créer de nouvelle
+  const etRows=await sb.from('etapes_dossier').select('id,statut').eq('dossier_id',dosId).eq('code_etape',codeEtape);
+  const etExist={data:(etRows.data&&etRows.data.length)?etRows.data[0]:null};
   const payload={dossier_id:dosId,code_etape:codeEtape,libelle:libelleEtape,statut:'fait',date_validation:new Date().toISOString(),validated_by:currentUser.id,validated_by_name:currentProfile?.full_name||''};
   if(etExist.data){
-    await sb.from('etapes_dossier').update(payload).eq('id',etExist.data.id);
+    await sb.from('etapes_dossier').update(payload).eq('dossier_id',dosId).eq('code_etape',codeEtape);
   }else{
     await sb.from('etapes_dossier').insert(payload);
   }
@@ -1717,8 +1719,8 @@ async function upEtapeDoc(dosId,codeEtape,inp){
   if(ue){alert('Erreur upload: '+ue.message);return;}
   const{data:ud}=sb.storage.from('documents').getPublicUrl(path);
   // Sauvegarder doc_url dans étape
-  const etExist=await sb.from('etapes_dossier').select('id').eq('dossier_id',dosId).eq('code_etape',codeEtape).single();
-  if(etExist.data){await sb.from('etapes_dossier').update({doc_url:ud.publicUrl}).eq('id',etExist.data.id);}
+  const etRows=await sb.from('etapes_dossier').select('id').eq('dossier_id',dosId).eq('code_etape',codeEtape);
+  if(etRows.data&&etRows.data.length){await sb.from('etapes_dossier').update({doc_url:ud.publicUrl}).eq('dossier_id',dosId).eq('code_etape',codeEtape);}
   else{await sb.from('etapes_dossier').insert({dossier_id:dosId,code_etape:codeEtape,doc_url:ud.publicUrl,statut:'attente'});}
   toast('Document joint','',3000);
   await ouvrirDossier(dosId);
@@ -1728,8 +1730,8 @@ async function upEtapeDoc(dosId,codeEtape,inp){
 async function upEtapeDocRemplacer(inp){
   var f=inp.files[0];if(!f)return;
   var dosId=inp.dataset.did,k=inp.dataset.k,l=inp.dataset.l;
-  var r=await sb.from('etapes_dossier').select('doc_url').eq('dossier_id',dosId).eq('code_etape',k).maybeSingle();
-  var avait=!!(r.data&&r.data.doc_url);
+  var r=await sb.from('etapes_dossier').select('doc_url').eq('dossier_id',dosId).eq('code_etape',k);
+  var avait=(r.data||[]).some(function(x){return !!x.doc_url;});
   if(avait&&!confirm('Remplacer le document de l\'étape « '+l+' » par « '+f.name+' » ?\n\nL\'étape reste validée. L\'ancien fichier n\'apparaîtra plus dans le dossier.')){inp.value='';return;}
   await upEtapeDoc(dosId,k,inp);
   try{await sb.from('commentaires').insert({dossier_id:dosId,contenu:'📎 Document '+(avait?'remplacé':'ajouté')+' — étape « '+l+' » ('+f.name+')',auteur_id:currentUser.id,section:'general'});await ouvrirDossier(dosId);}catch(e){}
@@ -9148,9 +9150,10 @@ async function ntgPiecesDossier(kind,id){
     info=[['Client',(d.clients&&d.clients.nom)||''],['Bureau',getBureauLabel(d.bureau_douane)||''],['BL / LTA / LV',d.identifiant_principal||''],['Produit',d.produit||d.marchandise||''],['Déclaration',d.decl_numero||'']];
     var defs=ETAPES_DEF[etapesKeyDossier(d)]||[];
     var er=await sb.from('etapes_dossier').select('code_etape,libelle,doc_url,date_validation,created_at').eq('dossier_id',id);
-    var ets=(er.data||[]).filter(function(e){return e.doc_url;});
-    defs.forEach(function(df,i){var e=ets.find(function(x){return x.code_etape===df.k;});if(e)add((i+1)+'. '+df.l,e.doc_url,'Étapes');});
-    ets.forEach(function(e){if(!defs.some(function(df){return df.k===e.code_etape;}))add(e.libelle||e.code_etape,e.doc_url,'Autres pièces');});
+    // une seule pièce par étape : celle affichée dans le dossier (dernière ligne enregistrée)
+    var parCode={};(er.data||[]).forEach(function(e){var c=parCode[e.code_etape];if(!c||e.doc_url||!c.doc_url)parCode[e.code_etape]=e.doc_url?e:(c&&c.doc_url?c:e);});
+    defs.forEach(function(df,i){var e=parCode[df.k];if(e&&e.doc_url)add((i+1)+'. '+df.l,e.doc_url,'Étapes');});
+    Object.keys(parCode).forEach(function(k){var e=parCode[k];if(e.doc_url&&!defs.some(function(df){return df.k===k;}))add(e.libelle||k,e.doc_url,'Autres pièces');});
     if(d.decl_pdf_url)add('Déclaration en douane'+(d.decl_numero?' n° '+d.decl_numero:''),d.decl_pdf_url,'Douane');
     if(d.facture_url)add('Facture (ancienne saisie)',d.facture_url,'Facturation');
   }else{
@@ -9189,6 +9192,9 @@ async function ntgDocumentationPdf(kind,id,btn){
         var r=await fetch(p.url);if(!r.ok)throw new Error('HTTP '+r.status);
         var ct=(r.headers.get('content-type')||'').toLowerCase();
         var bytes=new Uint8Array(await r.arrayBuffer());
+        var empreinte='';try{var hb=new Uint8Array(await crypto.subtle.digest('SHA-256',bytes));empreinte=Array.prototype.map.call(hb,function(x){return ('0'+x.toString(16)).slice(-2);}).join('');}catch(e){empreinte=bytes.length+':'+bytes[0]+':'+bytes[bytes.length-1];}
+        var deja=res.find(function(x){return x.ok&&x.hash===empreinte;});
+        if(deja){res.push({l:p.l,g:p.g,ok:true,dup:deja});continue;}
         var ext=p.url.split('?')[0].split('.').pop().toLowerCase();
         var estPdf=ext==='pdf'||ct.indexOf('pdf')>=0||(bytes[0]===0x25&&bytes[1]===0x50&&bytes[2]===0x44&&bytes[3]===0x46);
         var estPng=ext==='png'||ct.indexOf('png')>=0||(bytes[0]===0x89&&bytes[1]===0x50);
@@ -9200,7 +9206,7 @@ async function ntgDocumentationPdf(kind,id,btn){
           var page=out.addPage([W,H]);var sc=Math.min((W-40)/img.width,(H-40)/img.height);
           page.drawImage(img,{x:(W-img.width*sc)/2,y:(H-img.height*sc)/2,width:img.width*sc,height:img.height*sc});
         }else throw new Error('format non pris en charge ('+ext+')');
-        res.push({l:p.l,g:p.g,ok:true,de:debut,a:out.getPageCount()-1});
+        res.push({l:p.l,g:p.g,ok:true,de:debut,a:out.getPageCount()-1,hash:empreinte});
       }catch(e){console.warn('documentation',p.l,e);res.push({l:p.l,g:p.g,ok:false,err:String(e.message||e)});}
     }
     // ---- page(s) de garde avec sommaire ----
@@ -9231,7 +9237,9 @@ async function ntgDocumentationPdf(kind,id,btn){
     pos.forEach(function(o){
       var rr=o.rr;cur=o.page;
       T(String(rr.l).slice(0,70),52,o.y,{size:9.5,color:rr.ok?noir:rouge});
-      var droite=rr.ok?('p. '+(rr.de+1+nbG)+(rr.a>rr.de?'–'+(rr.a+1+nbG):'')):'non lisible — à joindre à part';
+      var src2=rr.dup||rr;
+      var pages='p. '+(src2.de+1+nbG)+(src2.a>src2.de?'–'+(src2.a+1+nbG):'');
+      var droite=!rr.ok?'non lisible — à joindre à part':(rr.dup?'même document, voir '+pages:pages);
       var w=(rr.ok?font:font).widthOfTextAtSize(factPdfTxt(droite),9);
       cur.drawText(factPdfTxt(droite),{x:555-w,y:o.y,size:9,font:font,color:rr.ok?gris:rouge});
     });
@@ -9242,7 +9250,7 @@ async function ntgDocumentationPdf(kind,id,btn){
     var nom=(src.titre.split(' — ')[0]||'Dossier').replace(/[^A-Za-z0-9_-]+/g,'_')+'_Documentation.pdf';
     factDownload(bytesOut,nom);
     var ko=res.filter(function(x){return !x.ok;});
-    toast('Documentation téléchargée : '+(res.length-ko.length)+' pièce(s)'+(ko.length?' — '+ko.length+' non lisible(s)':''),'',6000);
+    toast('Documentation téléchargée : '+res.filter(function(x){return x.ok&&!x.dup;}).length+' pièce(s)'+(ko.length?' — '+ko.length+' non lisible(s)':''),'',6000);
     if(ko.length)alert('Pièces non intégrées (format non lisible ou fichier introuvable) :\n\n- '+ko.map(function(x){return x.l;}).join('\n- ')+'\n\nElles sont signalées en rouge dans le sommaire.');
   }catch(e){alert('Erreur : '+(e.message||e));}
   finally{if(btn){btn.disabled=false;btn.innerHTML=lib;}}
