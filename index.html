@@ -320,7 +320,8 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--t
   <script>
     // Force rechargement si nouvelle version disponible
     (function(){
-      var APP_VERSION = '202611161600';
+      var APP_VERSION = '202611161630';
+      window.NTG_VERSION = APP_VERSION;
       var stored = localStorage.getItem('ntg_app_version');
       if(stored && stored !== APP_VERSION){
         localStorage.setItem('ntg_app_version', APP_VERSION);
@@ -391,7 +392,7 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--t
 <!-- APP -->
 <div class="screen" id="apps">
   <div class="topbar">
-    <div class="app-logo"><img class="app-logo-img" src="icons/logo-ntg.png" alt="NTG" onerror="this.style.display='none'">La Centrale <span>NTG</span><small>v1.0</small></div>
+    <div class="app-logo"><img class="app-logo-img" src="icons/logo-ntg.png" alt="NTG" onerror="this.style.display='none'">La Centrale <span>NTG</span><small id="app-ver" title="Version de l'application">v1.0</small></div>
     <span class="bureau-badge" id="bureau-badge" style="display:none"></span>
     <div class="topbar-right">
       <button onclick="goPage('dash',null)" style="background:rgba(255,255,255,.15);border:none;color:#fff;padding:5px 12px;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer" class="tb-btn"><svg class="ic" aria-hidden="true"><use href="#i-dash"/></svg>Dashboard</button>
@@ -9252,7 +9253,7 @@ async function ntgDocumentationPdf(kind,id,btn){
     y-=26;T(src.titre,40,y,{bold:true,size:16});
     y-=8;
     src.info.forEach(function(kv){if(!kv[1])return;y-=16;T(kv[0]+' :',40,y,{bold:true,size:10,color:gris});T(String(kv[1]).slice(0,80),150,y,{size:10});});
-    y-=16;T('Édité le '+new Date().toLocaleString('fr-FR')+' par '+((currentProfile&&currentProfile.full_name)||''),40,y,{size:9,color:gris});
+    y-=16;T('Édité le '+new Date().toLocaleString('fr-FR')+' par '+((currentProfile&&currentProfile.full_name)||'')+'  ·  version '+(window.NTG_VERSION||''),40,y,{size:9,color:gris});
     y-=30;T('SOMMAIRE',40,y,{bold:true,size:12,color:bleu});y-=8;
     // les pages de garde décalent la numérotation : on la calcule après coup
     var lignes=res.slice(),grpPrec=null,pos=[];
@@ -9283,6 +9284,33 @@ async function ntgDocumentationPdf(kind,id,btn){
   }catch(e){alert('Erreur : '+(e.message||e));}
   finally{if(btn){btn.disabled=false;btn.innerHTML=lib;}}
 }
+
+
+// =====================================================================
+// MISE À JOUR AUTOMATIQUE pendant que l'application reste ouverte :
+// toutes les 2 minutes et à chaque retour sur l'onglet, on compare la version
+// publiée sur le site à celle qui tourne ; si elle a changé, on recharge
+// (immédiatement si aucune fenêtre n'est ouverte, sinon on propose).
+// =====================================================================
+var _ntgMajProposee=false;
+function ntgVersionAffichee(){var e=document.getElementById('app-ver');if(e&&window.NTG_VERSION){var v=window.NTG_VERSION;e.textContent='v'+v.slice(6,8)+'/'+v.slice(4,6)+' '+v.slice(8,10)+'h'+v.slice(10,12);}}
+async function ntgVerifierMaj(){
+  try{
+    if(!window.NTG_VERSION||location.protocol.indexOf('http')!==0)return;
+    var r=await fetch(location.pathname+'?v='+Date.now(),{cache:'no-store'});if(!r.ok)return;
+    var t=await r.text();var m=t.match(/var APP_VERSION = '(\d+)'/);if(!m||m[1]===window.NTG_VERSION)return;
+    var occupe=document.querySelector('.mo.on')||document.getElementById('main-panel')&&document.getElementById('main-panel').classList.contains('on');
+    if(!occupe){location.reload();return;}
+    if(_ntgMajProposee)return;_ntgMajProposee=true;
+    var b=document.createElement('div');
+    b.style.cssText='position:fixed;bottom:16px;left:50%;transform:translateX(-50%);z-index:99999;background:#0b3d73;color:#fff;padding:10px 14px;border-radius:10px;box-shadow:0 6px 24px rgba(0,0,0,.25);display:flex;gap:10px;align-items:center;font-size:13px';
+    b.innerHTML='Une nouvelle version de La Centrale est disponible.<button class="btn sm gbtn" onclick="location.reload()">Mettre à jour</button>';
+    document.body.appendChild(b);
+  }catch(e){}
+}
+ntgVersionAffichee();
+setInterval(ntgVerifierMaj,120000);
+document.addEventListener('visibilitychange',function(){if(document.visibilityState==='visible')ntgVerifierMaj();});
 
 // =====================================================================
 // ICÔNES : conversion automatique des émojis de l'interface en icônes SVG
