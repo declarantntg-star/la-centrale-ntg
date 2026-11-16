@@ -320,7 +320,7 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--t
   <script>
     // Force rechargement si nouvelle version disponible
     (function(){
-      var APP_VERSION = '202611161400';
+      var APP_VERSION = '202611161430';
       var stored = localStorage.getItem('ntg_app_version');
       if(stored && stored !== APP_VERSION){
         localStorage.setItem('ntg_app_version', APP_VERSION);
@@ -1611,7 +1611,9 @@ async function ouvrirDossier(dosId){
       if(!et.noDoc)html+='<label class="upl" title="Joindre document"><input type="file" accept=".pdf,.jpg,.jpeg,.png" onchange="upEtapeDoc(\''+dosId+'\',\''+et.k+'\',this)">📎</label>';
       html+='<button class="btn sm gbtn" data-did="'+dosId+'" data-k="'+et.k+'" data-l="'+escH(et.l)+'" onclick="validerEtape(this.dataset.did,this.dataset.k,this.dataset.l)" title="'+(et.noDoc?'Cocher':'Valider')+'">'+(et.noDoc?'☑':'✓')+'</button>';
     }else{
-      html+='<button class="btn sm" onclick="rouvrirEtape(\''+dosId+'\',\''+et.k+'\')">↩</button>';
+      // étape validée : le document peut être remplacé sans dévalider l'étape
+      if(!et.noDoc)html+='<label class="upl" title="'+(saved&&saved.doc_url?'Remplacer le document':'Joindre un document')+'"><input type="file" accept=".pdf,.jpg,.jpeg,.png" data-did="'+dosId+'" data-k="'+et.k+'" data-l="'+escH(et.l)+'" onchange="upEtapeDocRemplacer(this)">'+(saved&&saved.doc_url?'🔄':'📎')+'</label>';
+      html+='<button class="btn sm" onclick="rouvrirEtape(\''+dosId+'\',\''+et.k+'\')" title="Rouvrir l\'étape">↩</button>';
     }
     html+='</div></div>';
   });
@@ -1722,6 +1724,16 @@ async function upEtapeDoc(dosId,codeEtape,inp){
   await ouvrirDossier(dosId);
 }
 
+// Remplacer le document d'une étape déjà validée (trace dans les commentaires du dossier)
+async function upEtapeDocRemplacer(inp){
+  var f=inp.files[0];if(!f)return;
+  var dosId=inp.dataset.did,k=inp.dataset.k,l=inp.dataset.l;
+  var r=await sb.from('etapes_dossier').select('doc_url').eq('dossier_id',dosId).eq('code_etape',k).maybeSingle();
+  var avait=!!(r.data&&r.data.doc_url);
+  if(avait&&!confirm('Remplacer le document de l\'étape « '+l+' » par « '+f.name+' » ?\n\nL\'étape reste validée. L\'ancien fichier n\'apparaîtra plus dans le dossier.')){inp.value='';return;}
+  await upEtapeDoc(dosId,k,inp);
+  try{await sb.from('commentaires').insert({dossier_id:dosId,contenu:'📎 Document '+(avait?'remplacé':'ajouté')+' — étape « '+l+' » ('+f.name+')',auteur_id:currentUser.id,section:'general'});await ouvrirDossier(dosId);}catch(e){}
+}
 async function sendCmtDos(){
   const inp=document.getElementById('dos-cmt-inp');
   if(!inp||!inp.value.trim())return;
