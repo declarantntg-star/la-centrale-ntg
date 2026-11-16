@@ -320,7 +320,7 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--t
   <script>
     // Force rechargement si nouvelle version disponible
     (function(){
-      var APP_VERSION = '202611152330';
+      var APP_VERSION = '202611161245';
       var stored = localStorage.getItem('ntg_app_version');
       if(stored && stored !== APP_VERSION){
         localStorage.setItem('ntg_app_version', APP_VERSION);
@@ -1080,6 +1080,7 @@ const ETAPES_DEF = {
     {k:'soumission_avd',      l:'Soumission AVD (capture d\'écran)', ico:'📤'},
     {k:'document_avd',        l:'Document AVD',                     ico:'📄'},
     {k:'liquidation',         l:'Déclaration liquidée',             ico:'💰'},
+    {k:'facture_echange_bl',  l:'Facture et reçu échange BL',       ico:'🧾'},
     {k:'bad',                 l:'Autorisation de sortie / BAD',     ico:'✅'},
     {k:'demande_acconage',    l:'Demande acconage',                 ico:'📧'},
     {k:'ligne_port',          l:'Vérification ligne Port',          ico:'⚓', noDoc:true},
@@ -1096,6 +1097,7 @@ const ETAPES_DEF = {
     {k:'facture_commerciale', l:'Facture commerciale',              ico:'🧾'},
     {k:'licence_160',         l:'Soumission Licence 160',           ico:'📤'},
     {k:'liquidation',         l:'Déclaration liquidée',             ico:'💰'},
+    {k:'facture_echange_bl',  l:'Facture et reçu échange BL',       ico:'🧾'},
     {k:'bad',                 l:'Autorisation de sortie / BAD',     ico:'✅'},
     {k:'demande_acconage',    l:'Demande acconage',                 ico:'📧'},
     {k:'ligne_port',          l:'Vérification ligne Port',          ico:'⚓', noDoc:true},
@@ -1113,6 +1115,7 @@ const ETAPES_DEF = {
     {k:'facture_commerciale', l:'Facture commerciale',              ico:'🧾'},
     {k:'autorisation_exo',    l:'Autorisation d\'exonération',       ico:'📜'},
     {k:'liquidation',         l:'Déclaration liquidée',             ico:'💰'},
+    {k:'facture_echange_bl',  l:'Facture et reçu échange BL',       ico:'🧾'},
     {k:'bad',                 l:'Autorisation de sortie / BAD',     ico:'✅'},
     {k:'demande_acconage',    l:'Demande acconage',                 ico:'📧'},
     {k:'ligne_port',          l:'Vérification ligne Port',          ico:'⚓', noDoc:true},
