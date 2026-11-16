@@ -320,7 +320,7 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--t
   <script>
     // Force rechargement si nouvelle version disponible
     (function(){
-      var APP_VERSION = '202611161515';
+      var APP_VERSION = '202611161600';
       var stored = localStorage.getItem('ntg_app_version');
       if(stored && stored !== APP_VERSION){
         localStorage.setItem('ntg_app_version', APP_VERSION);
@@ -1470,6 +1470,33 @@ function filterDosType(v){dosTypeFilter=v;loadDossiers();}
 function searchDos(v){dosSearch=v;renderDossiers();}
 
 // Ouvrir un dossier dans le panneau latéral
+// ---------------------------------------------------------------------
+// Une étape = UNE ligne logique. D'anciennes versions ont pu créer plusieurs
+// lignes pour la même étape (et l'ordre renvoyé par la base n'est pas garanti).
+// Règle : le document retenu est le plus RÉCENT (horodatage dans le nom du
+// fichier : <code>_<ms>.<ext>) ; l'étape est validée si une des lignes l'est.
+// ---------------------------------------------------------------------
+function etapeDocTs(url){var m=String(url||'').split('?')[0].match(/_(\d{12,14})\.[A-Za-z0-9]+$/);return m?+m[1]:0;}
+function etapesFusion(rows){
+  var g={};(rows||[]).forEach(function(r){(g[r.code_etape]=g[r.code_etape]||[]).push(r);});
+  var map={};
+  Object.keys(g).forEach(function(k){
+    var L=g[k];if(L.length===1){map[k]=L[0];return;}
+    var avecDoc=L.filter(function(r){return r.doc_url;}).sort(function(a,b){return etapeDocTs(b.doc_url)-etapeDocTs(a.doc_url)||String(b.created_at||'').localeCompare(String(a.created_at||''));});
+    var faits=L.filter(function(r){return r.statut==='fait';}).sort(function(a,b){return String(b.date_validation||'').localeCompare(String(a.date_validation||''));});
+    var base=Object.assign({},faits[0]||L[0]);
+    base.doc_url=avecDoc.length?avecDoc[0].doc_url:null;
+    base._doublons=L.length;
+    map[k]=base;
+  });
+  return map;
+}
+// Remet d'aplomb les étapes en double (toutes les lignes reçoivent les mêmes valeurs)
+async function etapesConsolider(dosId,map){
+  for(var k in map){var e=map[k];if(!e._doublons)continue;
+    try{await sb.from('etapes_dossier').update({doc_url:e.doc_url,statut:e.statut,date_validation:e.date_validation||null,validated_by:e.validated_by||null,validated_by_name:e.validated_by_name||null}).eq('dossier_id',dosId).eq('code_etape',k);}catch(err){console.warn('consolidation',k,err);}
+  }
+}
 async function ouvrirDossier(dosId){
   currentDosId=dosId;
   let d=allDossiers.find(x=>x.id===dosId);
@@ -1490,7 +1517,8 @@ async function ouvrirDossier(dosId){
     const depR=await sb.from('depenses').select('*,profiles(full_name)').eq('dossier_id',dosId).order('created_at',{ascending:false});
     deps=depR.data||[];
   }catch(err){console.warn('DB:',err.message);}
-  const etMap={};etSaved.forEach(function(e){etMap[e.code_etape]=e;});
+  const etMap=etapesFusion(etSaved);
+  etapesConsolider(dosId,etMap);
   const totalDep=deps.reduce((a,x)=>a+(parseFloat(x.montant)||0),0);
 
   document.getElementById('panel-title').textContent=d.numero_ntg+' — '+ti.l;
@@ -5576,9 +5604,9 @@ async function genDossierLiberation(dosId, ntgNum, clientNom, isKrake){
     var etapeCodes=isKrake
       ?['declaration_dae','quittance_ter','usn_paye_ter','facture_com_ter','ticket_pese','ordre_dedouan']
       :['declaration_dae','reception_lv'];
-    var{data:etapes}=await sb.from('etapes_dossier').select('code_etape,doc_url').eq('dossier_id',dosId).in('code_etape',etapeCodes);
-    var docMap={};
-    (etapes||[]).forEach(function(e){if(e.doc_url)docMap[e.code_etape]=e.doc_url;});
+    var{data:etapes}=await sb.from('etapes_dossier').select('code_etape,doc_url,statut,date_validation,created_at').eq('dossier_id',dosId).in('code_etape',etapeCodes);
+    var docMap={};var fz=etapesFusion(etapes||[]);
+    Object.keys(fz).forEach(function(k){if(fz[k].doc_url)docMap[k]=fz[k].doc_url;});
 
     var{PDFDocument}=PDFLib;
     var merged=await PDFDocument.create();
@@ -7805,10 +7833,10 @@ async function factDossierClient(id){
   var add=function(k,l,url){if(url&&!docs.some(function(d){return d.url===url;}))docs.push({k:k,l:l,url:url,on:true});else if(!url)docs.push({k:k,l:l,url:null,on:false,manque:true});};
   if(f.dossier_id){
     var dr=await sb.from('dossiers').select('*').eq('id',f.dossier_id).single();var d=dr.data||{};
-    var er=await sb.from('etapes_dossier').select('code_etape,doc_url').eq('dossier_id',f.dossier_id);
-    var et={};(er.data||[]).forEach(function(x){if(x.doc_url)et[x.code_etape]=x.doc_url;});
+    var er=await sb.from('etapes_dossier').select('code_etape,doc_url,statut,date_validation,created_at').eq('dossier_id',f.dossier_id);
+    var et={},fz=etapesFusion(er.data||[]);Object.keys(fz).forEach(function(k){if(fz[k].doc_url)et[k]=fz[k].doc_url;});
     var first=function(codes){for(var i=0;i<codes.length;i++)if(et[codes[i]])return et[codes[i]];return null;};
-    add('declaration','Déclaration en douane',d.decl_pdf_url||first(['declaration_dae','declaration','demande_dau','declaration_aer','declaration_imp_aer','declaration_tra','liquidation']));
+    add('declaration','Déclaration en douane',first(['liquidation','declaration_dae','declaration','demande_dau','declaration_aer','declaration_imp_aer','declaration_tra'])||d.decl_pdf_url);
     add('usn','USN',first(['usn_paye_ter','paiement_usn']));
     add('quittance','Quittance',first(['quittance_ter','paiement','paiement_aer','paiement_tra']));
     add('od','Ordre de dédouanement (OD)',first(['ordre_dedouan']));
@@ -8232,8 +8260,8 @@ async function impPiecesCommunes(){
   return {carte:(typeof _carteDgUrl!=='undefined'?_carteDgUrl:null),attestation:_impAttestationUrl};
 }
 async function impListePieces(d,type){
-  var er=await sb.from('etapes_dossier').select('code_etape,doc_url').eq('dossier_id',d.id);
-  var doc={};(er.data||[]).forEach(function(x){if(x.doc_url)doc[x.code_etape]=x.doc_url;});
+  var er=await sb.from('etapes_dossier').select('code_etape,doc_url,statut,date_validation,created_at').eq('dossier_id',d.id);
+  var doc={},fz=etapesFusion(er.data||[]);Object.keys(fz).forEach(function(k){if(fz[k].doc_url)doc[k]=fz[k].doc_url;});
   var com=await impPiecesCommunes(),sc=impSchema(d);
   var decl=doc['liquidation']||d.decl_pdf_url||null;
   var L=[];
@@ -9149,12 +9177,12 @@ async function ntgPiecesDossier(kind,id){
     titre=(d.numero_ntg||'Dossier')+' — '+(ti.l||d.type_dossier||'');
     info=[['Client',(d.clients&&d.clients.nom)||''],['Bureau',getBureauLabel(d.bureau_douane)||''],['BL / LTA / LV',d.identifiant_principal||''],['Produit',d.produit||d.marchandise||''],['Déclaration',d.decl_numero||'']];
     var defs=ETAPES_DEF[etapesKeyDossier(d)]||[];
-    var er=await sb.from('etapes_dossier').select('code_etape,libelle,doc_url,date_validation,created_at').eq('dossier_id',id);
-    // une seule pièce par étape : celle affichée dans le dossier (dernière ligne enregistrée)
-    var parCode={};(er.data||[]).forEach(function(e){var c=parCode[e.code_etape];if(!c||e.doc_url||!c.doc_url)parCode[e.code_etape]=e.doc_url?e:(c&&c.doc_url?c:e);});
+    var er=await sb.from('etapes_dossier').select('code_etape,libelle,doc_url,statut,date_validation,created_at').eq('dossier_id',id);
+    // une seule pièce par étape, la plus récente (celle affichée dans le dossier) ;
+    // seules les étapes de la feuille actuelle ; la déclaration est celle jointe aux étapes
+    // (déclaration liquidée), jamais celle importée directement de la douane
+    var parCode=etapesFusion(er.data||[]);
     defs.forEach(function(df,i){var e=parCode[df.k];if(e&&e.doc_url)add((i+1)+'. '+df.l,e.doc_url,'Étapes');});
-    Object.keys(parCode).forEach(function(k){var e=parCode[k];if(e.doc_url&&!defs.some(function(df){return df.k===k;}))add(e.libelle||k,e.doc_url,'Autres pièces');});
-    if(d.decl_pdf_url)add('Déclaration en douane'+(d.decl_numero?' n° '+d.decl_numero:''),d.decl_pdf_url,'Douane');
     if(d.facture_url)add('Facture (ancienne saisie)',d.facture_url,'Facturation');
   }else{
     var rb=await sb.from('bookings').select('*,clients(nom)').eq('id',id).single();var b=rb.data;if(!b)throw new Error('Booking introuvable');
